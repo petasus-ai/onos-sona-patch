@@ -1,0 +1,245 @@
+From 139bbae1bdbfb1df79fb877d45fd51f1ed805b72 Mon Sep 17 00:00:00 2001
+From: Jian Li <pyguni@gmail.com>
+Date: Thu, 3 May 2018 15:54:03 +0900
+Subject: [PATCH] Configure OVSDB to either run as hybrid mode or client mode
+
+With current implementation, OVSDB is always running as hybrid
+mode which is running both server and client.
+In case, ONOS and OVS run in the same machine, we encounter
+port conflict issues. To resolve this issue, we would like to
+add a configurable parameter to enforce ONOS only runs as OVSDB
+client without listening port 6640. Note that, by default ONOS
+will be still running as hybrid mode.
+
+Change-Id: I8c1d310335c0a0a661e9011905c00456baec309f
+---
+ .../ovsdb/controller/OvsdbConstant.java            |  2 +
+ .../ovsdb/controller/OvsdbController.java          |  9 ++++
+ .../controller/driver/OvsdbControllerAdapter.java  |  5 +++
+ .../ovsdb/controller/impl/Controller.java          | 17 ++++---
+ .../ovsdb/controller/impl/OvsdbControllerImpl.java | 52 +++++++++++++++++++++-
+ .../providers/device/OvsdbDeviceProviderTest.java  |  5 +++
+ .../ovsdb/provider/host/OvsdbHostProviderTest.java |  5 +++
+ 7 files changed, 88 insertions(+), 7 deletions(-)
+
+diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbConstant.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbConstant.java
+index f74186e7c2..69194617fe 100644
+--- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbConstant.java
++++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbConstant.java
+@@ -110,4 +110,6 @@ public final class OvsdbConstant {
+ 
+     /** Openflow port Error. */
+     public static final int OFPORT_ERROR = -1;
++
++    public static final boolean SERVER_MODE = true;
+ }
+diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbController.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbController.java
+index c271c7b9cb..096166cf71 100644
+--- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbController.java
++++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbController.java
+@@ -86,4 +86,13 @@ public interface OvsdbController {
+      * @param failhandler connection failure handler
+      */
+     void connect(IpAddress ip, TpPort port, Consumer<Exception> failhandler);
++
++    /**
++     * Configure the OVSDB instance to run as a server mode.
++     * If this mode is configured as true, then OVSDB will run as both OVSDB client and server.
++     * If this mode is configured as false, then OVSDB will run as OVS client only.
++     *
++     * @param serverMode server mode flag
++     */
++    void setServerMode(boolean serverMode);
+ }
+diff --git a/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbControllerAdapter.java b/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbControllerAdapter.java
+index 021bf398e5..2f2b1fd49f 100644
+--- a/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbControllerAdapter.java
++++ b/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbControllerAdapter.java
+@@ -78,4 +78,9 @@ public class OvsdbControllerAdapter implements OvsdbController {
+     public void connect(IpAddress ip, TpPort port, Consumer<Exception> failhandler) {
+ 
+     }
++
++    @Override
++    public void setServerMode(boolean serverMode) {
++
++    }
+ }
+diff --git a/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/Controller.java b/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/Controller.java
+index d49710d840..aedccf6184 100644
+--- a/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/Controller.java
++++ b/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/Controller.java
+@@ -199,15 +199,20 @@ public class Controller {
+      *
+      * @param agent OvsdbAgent
+      * @param monitorCallback Callback
++     * @param mode OVSDB server mode flag
+      */
+-    public void start(OvsdbAgent agent, Callback monitorCallback) {
++    public void start(OvsdbAgent agent, Callback monitorCallback, boolean mode) {
+         this.agent = agent;
+         this.monitorCallback = monitorCallback;
+-        try {
+-            this.run();
+-        } catch (InterruptedException e) {
+-            log.warn("Interrupted while waiting to start");
+-            Thread.currentThread().interrupt();
++        // if the OVSDB server flag is configured as false, we do NOT listen on 6640 port
++        // therefore, ONOS only runs as an OVSDB client
++        if (mode) {
++            try {
++                this.run();
++            } catch (InterruptedException e) {
++                log.warn("Interrupted while waiting to start");
++                Thread.currentThread().interrupt();
++            }
+         }
+     }
+ 
+diff --git a/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/OvsdbControllerImpl.java b/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/OvsdbControllerImpl.java
+index 0bd3ceef8e..e4e96f559b 100644
+--- a/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/OvsdbControllerImpl.java
++++ b/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/OvsdbControllerImpl.java
+@@ -20,10 +20,16 @@ import com.google.common.collect.ImmutableList;
+ import org.apache.felix.scr.annotations.Activate;
+ import org.apache.felix.scr.annotations.Component;
+ import org.apache.felix.scr.annotations.Deactivate;
++import org.apache.felix.scr.annotations.Modified;
++import org.apache.felix.scr.annotations.Property;
++import org.apache.felix.scr.annotations.Reference;
++import org.apache.felix.scr.annotations.ReferenceCardinality;
+ import org.apache.felix.scr.annotations.Service;
+ import org.onlab.packet.IpAddress;
+ import org.onlab.packet.MacAddress;
+ import org.onlab.packet.TpPort;
++import org.onlab.util.Tools;
++import org.onosproject.cfg.ComponentConfigService;
+ import org.onosproject.ovsdb.controller.DefaultEventSubject;
+ import org.onosproject.ovsdb.controller.EventSubject;
+ import org.onosproject.ovsdb.controller.OvsdbClientService;
+@@ -59,6 +65,7 @@ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import java.math.BigInteger;
++import java.util.Dictionary;
+ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.List;
+@@ -72,6 +79,7 @@ import java.util.concurrent.TimeoutException;
+ import java.util.function.Consumer;
+ 
+ import static com.google.common.base.Preconditions.checkNotNull;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.SERVER_MODE;
+ 
+ /**
+  * The implementation of OvsdbController.
+@@ -94,18 +102,49 @@ public class OvsdbControllerImpl implements OvsdbController {
+             new ConcurrentHashMap<String, OvsdbClientService>();
+     protected ConcurrentHashMap<String, String> requestDbName = new ConcurrentHashMap<String, String>();
+ 
++    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
++    protected ComponentConfigService configService;
++
++    @Property(name = "serverMode", boolValue = SERVER_MODE,
++            label = "Run as server mode, listen on 6640 port")
++    private boolean serverMode = SERVER_MODE;
++
+     @Activate
+     public void activate(ComponentContext context) {
+-        controller.start(agent, updateCallback);
++        controller.start(agent, updateCallback, serverMode);
++
++        configService.registerProperties(getClass());
++
+         log.info("Started");
+     }
+ 
+     @Deactivate
+     public void deactivate() {
+         controller.stop();
++
++        configService.unregisterProperties(getClass(), false);
++
+         log.info("Stoped");
+     }
+ 
++    @Modified
++    protected void modified(ComponentContext context) {
++        Dictionary<?, ?> properties = context.getProperties();
++        Boolean flag;
++
++        flag = Tools.isPropertyEnabled(properties, "serverMode");
++        if (flag == null) {
++            log.info("OVSDB server mode is not configured, " +
++                    "using current value of {}", serverMode);
++        } else {
++            serverMode = flag;
++            log.info("Configured. OVSDB server mode was {}",
++                    serverMode ? "enabled" : "disabled");
++        }
++
++        restartController();
++    }
++
+     @Override
+     public void addNodeListener(OvsdbNodeListener listener) {
+         if (!ovsdbNodeListener.contains(listener)) {
+@@ -150,6 +189,12 @@ public class OvsdbControllerImpl implements OvsdbController {
+         controller.connect(ip, port, failhandler);
+     }
+ 
++    @Override
++    public void setServerMode(boolean serverMode) {
++        this.serverMode = serverMode;
++        restartController();
++    }
++
+     /**
+      * Processes table updates.
+      *
+@@ -324,6 +369,11 @@ public class OvsdbControllerImpl implements OvsdbController {
+         return value;
+     }
+ 
++    private void restartController() {
++        controller.stop();
++        controller.start(agent, updateCallback, serverMode);
++    }
++
+     /**
+      * Implementation of an Ovsdb Agent which is responsible for keeping track
+      * of connected node and the state in which they are.
+diff --git a/providers/ovsdb/device/src/test/java/org/onosproject/ovsdb/providers/device/OvsdbDeviceProviderTest.java b/providers/ovsdb/device/src/test/java/org/onosproject/ovsdb/providers/device/OvsdbDeviceProviderTest.java
+index ec0bba6b19..eff79bf0bf 100644
+--- a/providers/ovsdb/device/src/test/java/org/onosproject/ovsdb/providers/device/OvsdbDeviceProviderTest.java
++++ b/providers/ovsdb/device/src/test/java/org/onosproject/ovsdb/providers/device/OvsdbDeviceProviderTest.java
+@@ -258,6 +258,11 @@ public class OvsdbDeviceProviderTest {
+ 
+         }
+ 
++        @Override
++        public void setServerMode(boolean serverMode) {
++
++        }
++
+     }
+ 
+     private class TestDeviceService extends DeviceServiceAdapter {
+diff --git a/providers/ovsdb/host/src/test/java/org/onosproject/ovsdb/provider/host/OvsdbHostProviderTest.java b/providers/ovsdb/host/src/test/java/org/onosproject/ovsdb/provider/host/OvsdbHostProviderTest.java
+index ea15ad2932..ae58c20762 100644
+--- a/providers/ovsdb/host/src/test/java/org/onosproject/ovsdb/provider/host/OvsdbHostProviderTest.java
++++ b/providers/ovsdb/host/src/test/java/org/onosproject/ovsdb/provider/host/OvsdbHostProviderTest.java
+@@ -218,5 +218,10 @@ public class OvsdbHostProviderTest {
+         public void connect(IpAddress ip, TpPort port, Consumer<Exception> failhandler) {
+ 
+         }
++
++        @Override
++        public void setServerMode(boolean serverMode) {
++
++        }
+     }
+ }
+-- 
+2.15.1 (Apple Git-101)
+
