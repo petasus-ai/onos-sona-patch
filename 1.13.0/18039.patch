@@ -1,0 +1,26 @@
+From b812ca138c8987293289cefe03bbf09aaf6420dc Mon Sep 17 00:00:00 2001
+From: Daniel Park <dan.park@sk.com>
+Date: Mon, 23 Apr 2018 13:33:41 +0900
+Subject: [PATCH] Add Liquid IO Smart NIC in ovsdb-driver.xml
+
+Change-Id: I41cfdd260174798b228ee116ee009576192794a8
+---
+ drivers/ovsdb/src/main/resources/ovsdb-drivers.xml | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/ovsdb/src/main/resources/ovsdb-drivers.xml b/drivers/ovsdb/src/main/resources/ovsdb-drivers.xml
+index 8763e2dc98..33b970ae3e 100644
+--- a/drivers/ovsdb/src/main/resources/ovsdb-drivers.xml
++++ b/drivers/ovsdb/src/main/resources/ovsdb-drivers.xml
+@@ -35,5 +35,8 @@
+         <behaviour api="org.onosproject.net.behaviour.QueueConfigBehaviour"
+                    impl="org.onosproject.drivers.ovsdb.OvsdbQueueConfig"/>
+     </driver>
++    <driver name="liquidio" extends="ovs"
++            manufacturer="Cavium, Inc\." hwVersion="LiquidIO-II 210 SVN" swVersion="2\..*">
++    </driver>
+ </drivers>
+ 
+-- 
+2.15.2 (Apple Git-101.1)
+
