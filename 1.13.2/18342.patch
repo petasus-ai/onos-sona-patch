@@ -1,0 +1,738 @@
+From fce5abbc5dc5dd1623e0934d50962f57bbc0072e Mon Sep 17 00:00:00 2001
+From: kdarapu <k.darapu@partner.samsung.com>
+Date: Thu, 10 May 2018 19:37:53 +0530
+Subject: [PATCH] [ONOS-7667] Code clean-up in compliance with Java8
+
+Change-Id: Ieb17110357d8fa13705ebe9c86559b0863e77751
+---
+ .../onosproject/ovsdb/controller/OvsdbMirror.java  |  7 +-
+ .../org/onosproject/ovsdb/controller/OvsdbQos.java |  2 +-
+ .../controller/driver/DefaultOvsdbClient.java      | 81 ++++++++++------------
+ .../driver/OvsdbClientServiceAdapter.java          |  4 +-
+ .../controller/driver/OvsdbControllerAdapter.java  |  6 +-
+ .../ovsdb/controller/impl/Controller.java          | 61 ++++++++--------
+ .../ovsdb/controller/impl/OvsdbControllerImpl.java | 12 ++--
+ .../ovsdb/rfc/jsonrpc/JsonReadContext.java         |  2 +-
+ .../onosproject/ovsdb/rfc/notation/Condition.java  |  2 +-
+ .../onosproject/ovsdb/rfc/notation/Mutation.java   |  2 +-
+ .../ovsdb/rfc/operations/Operation.java            |  2 +-
+ .../ovsdb/rfc/schema/type/ColumnTypeFactory.java   |  2 +-
+ .../ovsdb/rfc/schema/type/UuidBaseType.java        |  2 +-
+ .../org/onosproject/ovsdb/rfc/table/Bridge.java    |  2 +-
+ .../onosproject/ovsdb/rfc/table/Controller.java    |  2 +-
+ .../ovsdb/rfc/table/FlowSampleCollectorSet.java    |  2 +-
+ .../org/onosproject/ovsdb/rfc/table/FlowTable.java |  2 +-
+ .../org/onosproject/ovsdb/rfc/table/Interface.java |  2 +-
+ .../org/onosproject/ovsdb/rfc/table/Ipfix.java     |  2 +-
+ .../org/onosproject/ovsdb/rfc/table/Manager.java   |  2 +-
+ .../org/onosproject/ovsdb/rfc/table/Mirror.java    |  2 +-
+ .../org/onosproject/ovsdb/rfc/table/Netflow.java   |  2 +-
+ .../onosproject/ovsdb/rfc/table/OpenVSwitch.java   |  2 +-
+ .../onosproject/ovsdb/rfc/table/OvsdbTable.java    |  2 +-
+ .../java/org/onosproject/ovsdb/rfc/table/Port.java |  2 +-
+ .../java/org/onosproject/ovsdb/rfc/table/Qos.java  |  2 +-
+ .../org/onosproject/ovsdb/rfc/table/Queue.java     |  2 +-
+ .../org/onosproject/ovsdb/rfc/table/Sflow.java     |  2 +-
+ .../java/org/onosproject/ovsdb/rfc/table/Ssl.java  |  2 +-
+ .../onosproject/ovsdb/rfc/table/VersionNum.java    |  2 +-
+ .../onosproject/ovsdb/rfc/utils/FromJsonUtil.java  |  2 +-
+ .../ovsdb/rfc/utils/JsonRpcReaderUtil.java         |  8 +--
+ 32 files changed, 107 insertions(+), 122 deletions(-)
+
+diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbMirror.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbMirror.java
+index 7f889dbf35..20465613f8 100644
+--- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbMirror.java
++++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbMirror.java
+@@ -17,6 +17,7 @@
+ package org.onosproject.ovsdb.controller;
+ 
+ import com.google.common.collect.Maps;
++import org.onlab.packet.VlanId;
+ import org.onosproject.net.DefaultAnnotations;
+ import org.onosproject.net.behaviour.MirroringDescription;
+ import org.onosproject.ovsdb.rfc.notation.Uuid;
+@@ -232,13 +233,13 @@ public final class OvsdbMirror {
+             mirroringName = mirrorDesc.name().name();
+             selectAll = false;
+             monitorSrcPorts = mirrorDesc.monitorSrcPorts().parallelStream()
+-                    .map(monitorSrcPort -> Uuid.uuid(monitorSrcPort))
++                    .map(Uuid::uuid)
+                     .collect(Collectors.toSet());
+             monitorDstPorts = mirrorDesc.monitorDstPorts().parallelStream()
+-                    .map(monitorDstPort -> Uuid.uuid(monitorDstPort))
++                    .map(Uuid::uuid)
+                     .collect(Collectors.toSet());
+             monitorVlans = mirrorDesc.monitorVlans().parallelStream()
+-                    .map(monitorVlan -> monitorVlan.toShort())
++                    .map(VlanId::toShort)
+                     .collect(Collectors.toSet());
+ 
+             if (mirrorDesc.mirrorPort().isPresent()) {
+diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbQos.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbQos.java
+index e44076c0eb..5f1d4c97a9 100644
+--- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbQos.java
++++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbQos.java
+@@ -181,7 +181,7 @@ public final class OvsdbQos {
+             }
+ 
+             if (qosDesc.queues().isPresent()) {
+-                Map<Long, String> map = new HashMap();
++                Map<Long, String> map = new HashMap<>();
+                 qosDesc.queues().get().forEach((k, v) -> map.put(k, v.queueId().name()));
+                 queues = Optional.ofNullable(map);
+             }
+diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
+index ce9bb2130a..768addf970 100644
+--- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
++++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
+@@ -730,13 +730,11 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+             return ovsdbQoses;
+         }
+         ConcurrentMap<String, Row> rows = rowStore.getRowStore();
+-        for (String uuid : rows.keySet()) {
+-            Row row = getRow(DATABASENAME, QOS, uuid);
+-            OvsdbQos ovsdbQos = getOvsdbQos(row);
+-            if (ovsdbQos != null) {
+-                ovsdbQoses.add(ovsdbQos);
+-            }
+-        }
++        ovsdbQoses = rows.keySet().stream()
++                .map(uuid -> getRow(DATABASENAME, QOS, uuid))
++                .map(this::getOvsdbQos)
++                .filter(Objects::nonNull)
++                .collect(Collectors.toSet());
+         return ovsdbQoses;
+     }
+ 
+@@ -769,7 +767,7 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+ 
+         Uuid qosUuid = qosRow.uuid();
+ 
+-        Map<Long, Uuid> newQueues = new HashMap<Long, Uuid>();
++        Map<Long, Uuid> newQueues = new HashMap<>();
+         for (Map.Entry<Long, QueueDescription> entry : queues.entrySet()) {
+             Row queueRow = queueTableRows.values().stream().filter(r -> {
+                 OvsdbMap ovsdbMap = (OvsdbMap) (r.getColumn(EXTERNAL_ID).data());
+@@ -813,14 +811,12 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+             return;
+         }
+ 
+-        Map<Long, Uuid> deleteQueuesMap = new HashMap<>();
++        Map<Long, Uuid> deleteQueuesMap;
+         Map<Integer, Uuid> queuesMap = ((OvsdbMap) qosRow.getColumn(QUEUES).data()).map();
+ 
+-        queueKeys.forEach(key -> {
+-            if (queuesMap.containsKey(key.intValue())) {
+-                deleteQueuesMap.put(key, queuesMap.get(key.intValue()));
+-            }
+-        });
++        deleteQueuesMap = queueKeys.stream()
++                .filter(key -> queuesMap.containsKey(key.intValue()))
++                .collect(Collectors.toMap(key -> key, key -> queuesMap.get(key.intValue()), (a, b) -> b));
+ 
+         if (deleteQueuesMap.size() != 0) {
+             TableSchema parentTableSchema = dbSchema
+@@ -922,13 +918,12 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+             return ovsdbqueues;
+         }
+         ConcurrentMap<String, Row> rows = rowStore.getRowStore();
+-        for (String uuid : rows.keySet()) {
+-            Row row = getRow(DATABASENAME, QUEUE, uuid);
+-            OvsdbQueue ovsdbQueue = getOvsdbQueue(row);
+-            if (ovsdbQueue != null) {
+-                ovsdbqueues.add(ovsdbQueue);
+-            }
+-        }
++        ovsdbqueues = rows.keySet()
++                .stream()
++                .map(uuid -> getRow(DATABASENAME, QUEUE, uuid))
++                .map(this::getOvsdbQueue)
++                .filter(Objects::nonNull)
++                .collect(Collectors.toSet());
+         return ovsdbqueues;
+     }
+     /**
+@@ -1311,7 +1306,7 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+         }
+         DatabaseSchema databaseSchema = schema.get(dbName);
+         if (databaseSchema == null) {
+-            List<String> dbNames = new ArrayList<String>();
++            List<String> dbNames = new ArrayList<>();
+             dbNames.add(dbName);
+             Function<JsonNode, DatabaseSchema> rowFunction = input -> {
+                 log.debug("Get ovsdb database schema {}", dbName);
+@@ -1603,7 +1598,7 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+ 
+     @Override
+     public Set<OvsdbPort> getPorts() {
+-        Set<OvsdbPort> ovsdbPorts = new HashSet<>();
++        Set<OvsdbPort> ovsdbPorts;
+         OvsdbTableStore tableStore = getTableStore(DATABASENAME);
+         if (tableStore == null) {
+             return null;
+@@ -1613,13 +1608,12 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+             return null;
+         }
+         ConcurrentMap<String, Row> rows = rowStore.getRowStore();
+-        for (String uuid : rows.keySet()) {
+-            Row row = getRow(DATABASENAME, INTERFACE, uuid);
+-            OvsdbPort ovsdbPort = getOvsdbPort(row);
+-            if (ovsdbPort != null) {
+-                ovsdbPorts.add(ovsdbPort);
+-            }
+-        }
++        ovsdbPorts = rows.keySet()
++                .stream()
++                .map(uuid -> getRow(DATABASENAME, INTERFACE, uuid))
++                .map(this::getOvsdbPort)
++                .filter(Objects::nonNull)
++                .collect(Collectors.toSet());
+         return ovsdbPorts;
+     }
+ 
+@@ -1842,22 +1836,19 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+                 .entrySet().stream().filter(intf -> Objects.nonNull(intf.getValue())
+                         && ((OvsdbSet) intf.getValue().getOpenFlowPortColumn().data()).set()
+                         .stream().findAny().orElse(OFPORT_ERROR_COMPARISON).equals(OFPORT_ERROR))
+-                .map(intf -> intf.getValue()).collect(Collectors.toList());
+-
+-        interfaceList.forEach(intf -> new Consumer<Interface>() {
+-            @Override
+-            public void accept(Interface intf) {
+-                try {
+-                    Set<String> setErrors = ((OvsdbSet) intf.getErrorColumn().data()).set();
+-                    log.info("Port has errors. ofport value - {}, Interface - {} has error - {} ",
+-                            intf.getOpenFlowPortColumn().data(), intf.getName(), setErrors.stream()
+-                                    .findFirst().get());
+-                } catch (ColumnSchemaNotFoundException | VersionMismatchException  e) {
+-                    log.debug("Port has errors. ofport value - {}, Interface - {} has error - {} ",
+-                            intf.getOpenFlowPortColumn().data(), intf.getName(), e);
+-                }
++                .map(Map.Entry::getValue).collect(Collectors.toList());
++
++        interfaceList.forEach(intf -> ((Consumer<Interface>) intf1 -> {
++            try {
++                Set<String> setErrors = ((OvsdbSet) intf1.getErrorColumn().data()).set();
++                log.info("Port has errors. ofport value - {}, Interface - {} has error - {} ",
++                        intf1.getOpenFlowPortColumn().data(), intf1.getName(), setErrors.stream()
++                                .findFirst().get());
++            } catch (ColumnSchemaNotFoundException | VersionMismatchException e) {
++                log.debug("Port has errors. ofport value - {}, Interface - {} has error - {} ",
++                        intf1.getOpenFlowPortColumn().data(), intf1.getName(), e);
+             }
+-        }.accept(intf));
++        }).accept(intf));
+ 
+         return !interfaceList.isEmpty();
+     }
+diff --git a/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbClientServiceAdapter.java b/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbClientServiceAdapter.java
+index 7e05c4c96a..6282c5bc38 100644
+--- a/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbClientServiceAdapter.java
++++ b/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbClientServiceAdapter.java
+@@ -114,7 +114,7 @@ public class OvsdbClientServiceAdapter implements OvsdbClientService {
+     @Override
+     public OvsdbQos getQos(QosId qosId) {
+         return null;
+-    };
++    }
+ 
+     @Override
+     public Set<OvsdbQos> getQoses() {
+@@ -143,7 +143,7 @@ public class OvsdbClientServiceAdapter implements OvsdbClientService {
+     @Override
+     public OvsdbQueue getQueue(QueueId queueId) {
+         return null;
+-    };
++    }
+ 
+     @Override
+     public Set<OvsdbQueue> getQueues() {
+diff --git a/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbControllerAdapter.java b/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbControllerAdapter.java
+index 2f2b1fd49f..842f753c21 100644
+--- a/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbControllerAdapter.java
++++ b/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbControllerAdapter.java
+@@ -25,7 +25,7 @@ import org.onosproject.ovsdb.controller.OvsdbNodeId;
+ import org.onosproject.ovsdb.controller.OvsdbNodeListener;
+ 
+ import java.util.ArrayList;
+-import java.util.Arrays;
++import java.util.Collections;
+ import java.util.List;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.function.Consumer;
+@@ -35,7 +35,7 @@ import java.util.function.Consumer;
+  */
+ public class OvsdbControllerAdapter implements OvsdbController {
+     protected ConcurrentHashMap<OvsdbNodeId, OvsdbClientServiceAdapter> ovsdbClients =
+-            new ConcurrentHashMap<OvsdbNodeId, OvsdbClientServiceAdapter>();
++            new ConcurrentHashMap<>();
+ 
+     @Override
+     public void addNodeListener(OvsdbNodeListener listener) {
+@@ -60,7 +60,7 @@ public class OvsdbControllerAdapter implements OvsdbController {
+     @Override
+     public List<OvsdbNodeId> getNodeIds() {
+         long port = 6653;
+-        return new ArrayList<OvsdbNodeId>(Arrays.asList(
++        return new ArrayList<>(Collections.singletonList(
+                 new OvsdbNodeId(IpAddress.valueOf("127.0.0.1"), port)));
+     }
+ 
+diff --git a/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/Controller.java b/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/Controller.java
+index aedccf6184..8bf0609838 100644
+--- a/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/Controller.java
++++ b/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/Controller.java
+@@ -138,38 +138,35 @@ public class Controller {
+      * @param channel the channel to use.
+      */
+     private void handleNewNodeConnection(final Channel channel) {
+-        executorService.execute(new Runnable() {
+-            @Override
+-            public void run() {
+-                log.info("Handle new node connection");
+-
+-                IpAddress ipAddress = IpAddress
+-                        .valueOf(((InetSocketAddress) channel.remoteAddress())
+-                                .getAddress().getHostAddress());
+-                long port = ((InetSocketAddress) channel.remoteAddress())
+-                        .getPort();
+-
+-                log.info("Get connection from ip address {} : {}",
+-                         ipAddress.toString(), port);
+-
+-                OvsdbNodeId nodeId = new OvsdbNodeId(ipAddress, port);
+-                OvsdbProviderService ovsdbProviderService = getNodeInstance(nodeId,
+-                                                                            agent,
+-                                                                            monitorCallback,
+-                                                                            channel);
+-                ovsdbProviderService.setConnection(true);
+-                OvsdbJsonRpcHandler ovsdbJsonRpcHandler = new OvsdbJsonRpcHandler(
+-                                                                                  nodeId);
+-                ovsdbJsonRpcHandler
+-                        .setOvsdbProviderService(ovsdbProviderService);
+-                channel.pipeline().addLast(ovsdbJsonRpcHandler);
+-
+-                ovsdbProviderService.nodeAdded();
+-                ChannelFuture closeFuture = channel.closeFuture();
+-                closeFuture
+-                        .addListener(new ChannelConnectionListener(
+-                                                                   ovsdbProviderService));
+-            }
++        executorService.execute(() -> {
++            log.info("Handle new node connection");
++
++            IpAddress ipAddress = IpAddress
++                    .valueOf(((InetSocketAddress) channel.remoteAddress())
++                            .getAddress().getHostAddress());
++            long port = ((InetSocketAddress) channel.remoteAddress())
++                    .getPort();
++
++            log.info("Get connection from ip address {} : {}",
++                     ipAddress.toString(), port);
++
++            OvsdbNodeId nodeId = new OvsdbNodeId(ipAddress, port);
++            OvsdbProviderService ovsdbProviderService = getNodeInstance(nodeId,
++                                                                        agent,
++                                                                        monitorCallback,
++                                                                        channel);
++            ovsdbProviderService.setConnection(true);
++            OvsdbJsonRpcHandler ovsdbJsonRpcHandler = new OvsdbJsonRpcHandler(
++                                                                              nodeId);
++            ovsdbJsonRpcHandler
++                    .setOvsdbProviderService(ovsdbProviderService);
++            channel.pipeline().addLast(ovsdbJsonRpcHandler);
++
++            ovsdbProviderService.nodeAdded();
++            ChannelFuture closeFuture = channel.closeFuture();
++            closeFuture
++                    .addListener(new ChannelConnectionListener(
++                                                               ovsdbProviderService));
+         });
+     }
+ 
+diff --git a/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/OvsdbControllerImpl.java b/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/OvsdbControllerImpl.java
+index e4e96f559b..0d1e66291c 100644
+--- a/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/OvsdbControllerImpl.java
++++ b/protocols/ovsdb/ctl/src/main/java/org/onosproject/ovsdb/controller/impl/OvsdbControllerImpl.java
+@@ -93,14 +93,14 @@ public class OvsdbControllerImpl implements OvsdbController {
+     private static final long DEFAULT_OVSDB_RPC_TIMEOUT = 3000;
+     private final Controller controller = new Controller();
+     protected ConcurrentHashMap<OvsdbNodeId, OvsdbClientService> ovsdbClients =
+-            new ConcurrentHashMap<OvsdbNodeId, OvsdbClientService>();
++            new ConcurrentHashMap<>();
+     protected OvsdbAgent agent = new InternalOvsdbNodeAgent();
+     protected InternalMonitorCallBack updateCallback = new InternalMonitorCallBack();
+     protected Set<OvsdbNodeListener> ovsdbNodeListener = new CopyOnWriteArraySet<>();
+     protected Set<OvsdbEventListener> ovsdbEventListener = new CopyOnWriteArraySet<>();
+     protected ConcurrentHashMap<String, OvsdbClientService> requestNotification =
+-            new ConcurrentHashMap<String, OvsdbClientService>();
+-    protected ConcurrentHashMap<String, String> requestDbName = new ConcurrentHashMap<String, String>();
++            new ConcurrentHashMap<>();
++    protected ConcurrentHashMap<String, String> requestDbName = new ConcurrentHashMap<>();
+ 
+     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+     protected ComponentConfigService configService;
+@@ -272,7 +272,7 @@ public class OvsdbControllerImpl implements OvsdbController {
+ 
+         EventSubject eventSubject = new DefaultEventSubject(MacAddress.valueOf(
+                 macAndIfaceId[0]),
+-                                                            new HashSet<IpAddress>(),
++                new HashSet<>(),
+                                                             new OvsdbPortName(intf
+                                                                                       .getName()),
+                                                             new OvsdbPortNumber(localPort),
+@@ -281,8 +281,8 @@ public class OvsdbControllerImpl implements OvsdbController {
+                                                             new OvsdbPortType(portType),
+                                                             new OvsdbIfaceId(macAndIfaceId[1]));
+         for (OvsdbEventListener listener : ovsdbEventListener) {
+-            listener.handle(new OvsdbEvent<EventSubject>(eventType,
+-                                                         eventSubject));
++            listener.handle(new OvsdbEvent<>(eventType,
++                    eventSubject));
+         }
+     }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/jsonrpc/JsonReadContext.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/jsonrpc/JsonReadContext.java
+index 9c9395e9bf..f0faaec45b 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/jsonrpc/JsonReadContext.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/jsonrpc/JsonReadContext.java
+@@ -31,7 +31,7 @@ public class JsonReadContext {
+      * entity.
+      */
+     public JsonReadContext() {
+-        bufStack = new Stack<Byte>();
++        bufStack = new Stack<>();
+         isStartMatch = false;
+         lastReadBytes = 0;
+     }
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/notation/Condition.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/notation/Condition.java
+index a546aedf56..20deccc96f 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/notation/Condition.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/notation/Condition.java
+@@ -40,7 +40,7 @@ public final class Condition {
+ 
+         private final String function;
+ 
+-        private Function(String function) {
++        Function(String function) {
+             this.function = function;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/notation/Mutation.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/notation/Mutation.java
+index 7815ee3183..126cd84cd2 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/notation/Mutation.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/notation/Mutation.java
+@@ -41,7 +41,7 @@ public final class Mutation {
+ 
+         private final String mutator;
+ 
+-        private Mutator(String mutator) {
++        Mutator(String mutator) {
+             this.mutator = mutator;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/operations/Operation.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/operations/Operation.java
+index a278d501a7..44a5e09e49 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/operations/Operation.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/operations/Operation.java
+@@ -45,7 +45,7 @@ public interface Operation {
+ 
+         private String op;
+ 
+-        private Operations(String op) {
++        Operations(String op) {
+             this.op = op;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/schema/type/ColumnTypeFactory.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/schema/type/ColumnTypeFactory.java
+index 35423df254..c6942d7b02 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/schema/type/ColumnTypeFactory.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/schema/type/ColumnTypeFactory.java
+@@ -40,7 +40,7 @@ public final class ColumnTypeFactory {
+ 
+         private final String type;
+ 
+-        private Type(String type) {
++        Type(String type) {
+             this.type = type;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/schema/type/UuidBaseType.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/schema/type/UuidBaseType.java
+index 9cf7dd0e64..4c2f18b7c7 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/schema/type/UuidBaseType.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/schema/type/UuidBaseType.java
+@@ -33,7 +33,7 @@ public final class UuidBaseType implements BaseType {
+ 
+         private String refType;
+ 
+-        private RefType(String refType) {
++        RefType(String refType) {
+             this.refType = refType;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Bridge.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Bridge.java
+index dcf49ed4ae..f31cf38e50 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Bridge.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Bridge.java
+@@ -45,7 +45,7 @@ public class Bridge extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private BridgeColumn(String columnName) {
++        BridgeColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Controller.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Controller.java
+index f93cb7d747..4c019cd763 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Controller.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Controller.java
+@@ -46,7 +46,7 @@ public class Controller extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private ControllerColumn(String columnName) {
++        ControllerColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/FlowSampleCollectorSet.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/FlowSampleCollectorSet.java
+index a16980874d..c5dde81485 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/FlowSampleCollectorSet.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/FlowSampleCollectorSet.java
+@@ -36,7 +36,7 @@ public class FlowSampleCollectorSet extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private FlowSampleCollectorSetColumn(String columnName) {
++        FlowSampleCollectorSetColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/FlowTable.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/FlowTable.java
+index cdcbf7aa09..71c89d3935 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/FlowTable.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/FlowTable.java
+@@ -37,7 +37,7 @@ public class FlowTable extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private FlowTableColumn(String columnName) {
++        FlowTableColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Interface.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Interface.java
+index b05657bd1a..30f010438f 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Interface.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Interface.java
+@@ -50,7 +50,7 @@ public class Interface extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private InterfaceColumn(String columnName) {
++        InterfaceColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Ipfix.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Ipfix.java
+index 7b01376a41..48d23c74ca 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Ipfix.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Ipfix.java
+@@ -38,7 +38,7 @@ public class Ipfix extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private IpfixColumn(String columnName) {
++        IpfixColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Manager.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Manager.java
+index a6e30c5ddd..7c4ad0d8f2 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Manager.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Manager.java
+@@ -38,7 +38,7 @@ public class Manager extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private ManagerColumn(String columnName) {
++        ManagerColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Mirror.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Mirror.java
+index 48631d4240..f2f6210c76 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Mirror.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Mirror.java
+@@ -39,7 +39,7 @@ public class Mirror extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private MirrorColumn(String columnName) {
++        MirrorColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Netflow.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Netflow.java
+index cbb6056ba8..bdb4bac202 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Netflow.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Netflow.java
+@@ -37,7 +37,7 @@ public class Netflow extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private NetflowColumn(String columnName) {
++        NetflowColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/OpenVSwitch.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/OpenVSwitch.java
+index 692a6c530d..3ddc1b9398 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/OpenVSwitch.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/OpenVSwitch.java
+@@ -44,7 +44,7 @@ public class OpenVSwitch extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private OpenVSwitchColumn(String columnName) {
++        OpenVSwitchColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/OvsdbTable.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/OvsdbTable.java
+index a6ebed2634..0594dd2fb5 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/OvsdbTable.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/OvsdbTable.java
+@@ -27,7 +27,7 @@ public enum OvsdbTable {
+ 
+     private final String tableName;
+ 
+-    private OvsdbTable(String tableName) {
++    OvsdbTable(String tableName) {
+         this.tableName = tableName;
+     }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Port.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Port.java
+index 1db8137544..3be5f55508 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Port.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Port.java
+@@ -43,7 +43,7 @@ public class Port extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private PortColumn(String columnName) {
++        PortColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Qos.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Qos.java
+index dc3e67db9b..f7caecd41b 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Qos.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Qos.java
+@@ -37,7 +37,7 @@ public class Qos extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private QosColumn(String columnName) {
++        QosColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Queue.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Queue.java
+index 84841a3a69..de8ced90b9 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Queue.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Queue.java
+@@ -36,7 +36,7 @@ public class Queue extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private QueueColumn(String columnName) {
++        QueueColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Sflow.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Sflow.java
+index ac70ea3be2..ad8e5cc0d1 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Sflow.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Sflow.java
+@@ -37,7 +37,7 @@ public class Sflow extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private SflowColumn(String columnName) {
++        SflowColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Ssl.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Ssl.java
+index 7667110a10..bb0a7b0056 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Ssl.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Ssl.java
+@@ -36,7 +36,7 @@ public class Ssl extends AbstractOvsdbTableService {
+ 
+         private final String columnName;
+ 
+-        private SslColumn(String columnName) {
++        SslColumn(String columnName) {
+             this.columnName = columnName;
+         }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/VersionNum.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/VersionNum.java
+index 33327d8206..7e7825e39d 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/VersionNum.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/VersionNum.java
+@@ -36,7 +36,7 @@ public enum VersionNum {
+ 
+     private final String versionNum;
+ 
+-    private VersionNum(String versionNum) {
++    VersionNum(String versionNum) {
+         this.versionNum = versionNum;
+     }
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/utils/FromJsonUtil.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/utils/FromJsonUtil.java
+index 3383ba9689..858a1fc337 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/utils/FromJsonUtil.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/utils/FromJsonUtil.java
+@@ -218,7 +218,7 @@ public final class FromJsonUtil {
+     public static List<OperationResult> jsonNodeToOperationResult(List<JsonNode> input,
+                                                                   List<Operation> operations) {
+         ObjectMapper objectMapper = ObjectMapperUtil.getObjectMapper(false);
+-        List<OperationResult> operationResults = new ArrayList<OperationResult>();
++        List<OperationResult> operationResults = new ArrayList<>();
+         for (int i = 0; i < input.size(); i++) {
+             JsonNode jsonNode = input.get(i);
+ 
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/utils/JsonRpcReaderUtil.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/utils/JsonRpcReaderUtil.java
+index 5f677cfce4..b7662efb0b 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/utils/JsonRpcReaderUtil.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/utils/JsonRpcReaderUtil.java
+@@ -115,7 +115,6 @@ public final class JsonRpcReaderUtil {
+     /**
+      * Filter the invalid characters before decoding.
+      * @param in input of bytes
+-     * @param lastReadBytes the bytes for last decoding incomplete record
+      */
+     private static void fliterCharaters(ByteBuf in) {
+         while (in.isReadable()) {
+@@ -130,14 +129,11 @@ public final class JsonRpcReaderUtil {
+ 
+     /**
+      * Check whether the peek of the stack element is double quote.
+-     * @param jrContext context for the last decoding process
++     * @param bufStack context for the last decoding process
+      * @return boolean
+      */
+     private static boolean isDoubleQuote(Stack<Byte> bufStack) {
+-        if (!bufStack.isEmpty() && bufStack.peek() == '"') {
+-            return true;
+-        }
+-        return false;
++        return !bufStack.isEmpty() && bufStack.peek() == '"';
+     }
+ 
+     /**
+-- 
+2.15.2 (Apple Git-101.1)
+
