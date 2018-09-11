@@ -1,0 +1,188 @@
+From 1455268005049b83d7ef8f314fcacb35294f3e33 Mon Sep 17 00:00:00 2001
+From: Daniel Park <dan.mcpark84@gmail.com>
+Date: Tue, 28 Aug 2018 11:25:01 +0900
+Subject: [PATCH] Supports methods to get interface-related information in
+ ovsdbclient service.
+
+Change-Id: Ic7e45178c8adc9b207b43d893e64b1f2f47cebd4
+---
+ .../ovsdb/controller/OvsdbClientService.java       | 29 ++++++++---
+ .../controller/driver/DefaultOvsdbClient.java      | 56 ++++++++++++++++++++--
+ .../driver/OvsdbClientServiceAdapter.java          | 11 +++++
+ 3 files changed, 84 insertions(+), 12 deletions(-)
+
+diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbClientService.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbClientService.java
+index d552a70a6b..dd0d7874e7 100644
+--- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbClientService.java
++++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbClientService.java
+@@ -15,11 +15,7 @@
+  */
+ package org.onosproject.ovsdb.controller;
+ 
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Optional;
+-import java.util.Set;
+-
++import com.google.common.util.concurrent.ListenableFuture;
+ import org.onosproject.net.DeviceId;
+ import org.onosproject.net.PortNumber;
+ import org.onosproject.net.behaviour.ControllerInfo;
+@@ -34,10 +30,14 @@ import org.onosproject.ovsdb.rfc.jsonrpc.OvsdbRpc;
+ import org.onosproject.ovsdb.rfc.message.TableUpdates;
+ import org.onosproject.ovsdb.rfc.notation.Row;
+ import org.onosproject.ovsdb.rfc.schema.DatabaseSchema;
+-
+-import com.google.common.util.concurrent.ListenableFuture;
++import org.onosproject.ovsdb.rfc.table.Interface;
+ import org.onosproject.ovsdb.rfc.table.OvsdbTable;
+ 
++import java.util.List;
++import java.util.Map;
++import java.util.Optional;
++import java.util.Set;
++
+ /**
+  * Represents to provider facing side of a node.
+  */
+@@ -266,6 +266,21 @@ public interface OvsdbClientService extends OvsdbRpc {
+      */
+     Set<OvsdbPort> getPorts();
+ 
++    /**
++     * Gets interfaces of bridge.
++     *
++     * @return set of interfaces; empty if no interface is find
++     */
++    Set<Interface> getInterfaces();
++
++    /**
++     * Gets the interface with given portName.
++     *
++     * @param intf interface name
++     * @return interface
++     */
++    Interface getInterface(String intf);
++
+     /**
+      * Checks if the node is still connected.
+      *
+diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
+index 38f8ede2bd..9ffa26ead0 100644
+--- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
++++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
+@@ -106,7 +106,29 @@ import java.util.concurrent.atomic.AtomicReference;
+ import java.util.function.Consumer;
+ import java.util.stream.Collectors;
+ 
+-import static org.onosproject.ovsdb.controller.OvsdbConstant.*;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.BRIDGE;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.BRIDGES;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.BRIDGE_CONTROLLER;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.CONTROLLER;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.DATABASENAME;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.EXTERNAL_ID;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.EXTERNAL_ID_INTERFACE_ID;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.INTERFACE;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.INTERFACES;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.MIRROR;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.MIRRORS;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.OFPORT;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.OFPORT_ERROR;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.PORT;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.PORTS;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.PORT_QOS;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.QOS;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.QOS_EXTERNAL_ID_KEY;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.QUEUE;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.QUEUES;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.QUEUE_EXTERNAL_ID_KEY;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.TYPEVXLAN;
++import static org.onosproject.ovsdb.controller.OvsdbConstant.UUID;
+ 
+ /**
+  * An representation of an ovsdb client.
+@@ -1600,7 +1622,15 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+ 
+     @Override
+     public Set<OvsdbPort> getPorts() {
+-        Set<OvsdbPort> ovsdbPorts;
++        return (Set<OvsdbPort>) getElements(this::getOvsdbPort);
++    }
++
++    @Override
++    public Set<Interface> getInterfaces() {
++        return (Set<Interface>) getElements(this::getInterface);
++    }
++
++    private Set<?> getElements(Function<Row, ?> method) {
+         OvsdbTableStore tableStore = getTableStore(DATABASENAME);
+         if (tableStore == null) {
+             return null;
+@@ -1610,15 +1640,31 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+             return null;
+         }
+         ConcurrentMap<String, Row> rows = rowStore.getRowStore();
+-        ovsdbPorts = rows.keySet()
++
++        return rows.keySet()
+                 .stream()
+                 .map(uuid -> getRow(DATABASENAME, INTERFACE, uuid))
+-                .map(this::getOvsdbPort)
++                .map(method)
+                 .filter(Objects::nonNull)
+                 .collect(Collectors.toSet());
+-        return ovsdbPorts;
+     }
+ 
++    @Override
++    public Interface getInterface(String intf) {
++        return getInterfaces().stream()
++                .filter(ovsdbIntf -> ovsdbIntf.getName().equals(intf))
++                .findAny().orElse(null);
++    }
++
++    private Interface getInterface(Row row) {
++        DatabaseSchema dbSchema = getDatabaseSchema(DATABASENAME);
++        Interface intf = (Interface) TableGenerator
++                .getTable(dbSchema, row, OvsdbTable.INTERFACE);
++        if (intf == null) {
++            return null;
++        }
++        return intf;
++    }
+     @Override
+     public DatabaseSchema getDatabaseSchema(String dbName) {
+         return schema.get(dbName);
+diff --git a/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbClientServiceAdapter.java b/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbClientServiceAdapter.java
+index 2d2b674665..87dcc0b3b3 100644
+--- a/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbClientServiceAdapter.java
++++ b/protocols/ovsdb/api/src/test/java/org/onosproject/ovsdb/controller/driver/OvsdbClientServiceAdapter.java
+@@ -48,6 +48,7 @@ import org.onosproject.ovsdb.rfc.schema.DatabaseSchema;
+ 
+ import com.fasterxml.jackson.databind.JsonNode;
+ import com.google.common.util.concurrent.ListenableFuture;
++import org.onosproject.ovsdb.rfc.table.Interface;
+ import org.onosproject.ovsdb.rfc.table.OvsdbTable;
+ 
+ /**
+@@ -217,6 +218,16 @@ public class OvsdbClientServiceAdapter implements OvsdbClientService {
+         return null;
+     }
+ 
++    @Override
++    public Set<Interface> getInterfaces() {
++        return null;
++    }
++
++    @Override
++    public Interface getInterface(String intf) {
++        return null;
++    }
++
+     @Override
+     public boolean isConnected() {
+         return false;
+-- 
+2.15.2 (Apple Git-101.1)
+

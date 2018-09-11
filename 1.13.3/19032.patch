@@ -1,0 +1,30 @@
+From 9f5b52bee6ce456fb688f8ebee6471ab284564e6 Mon Sep 17 00:00:00 2001
+From: Daniel Park <dan.mcpark84@gmail.com>
+Date: Sun, 8 Jul 2018 23:07:12 +0900
+Subject: [PATCH] Fix ONOS UI doesn't expose CONTROLLER type device.
+
+ - Since the device such as OVSDB is registered as CONTROLLER and there's nothing to do with the device on UI.
+ - Also it has no connections with other devices.
+ - I suggest not to expose CONTROLLER-type devices.
+
+Change-Id: I03566d2d29c1d3ddf8894d0799f33b7e84239d16
+---
+ .../main/java/org/onosproject/ui/impl/TopologyViewMessageHandler.java   | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web/gui/src/main/java/org/onosproject/ui/impl/TopologyViewMessageHandler.java b/web/gui/src/main/java/org/onosproject/ui/impl/TopologyViewMessageHandler.java
+index f8be6a8173..1c16a44e3b 100644
+--- a/web/gui/src/main/java/org/onosproject/ui/impl/TopologyViewMessageHandler.java
++++ b/web/gui/src/main/java/org/onosproject/ui/impl/TopologyViewMessageHandler.java
+@@ -781,7 +781,7 @@ public class TopologyViewMessageHandler extends TopologyViewMessageHandlerBase {
+         }
+         for (Device device : services.device().getDevices()) {
+             if ((device.type() != Device.Type.ROADM) &&
+-                    (device.type() != Device.Type.OTN)) {
++                    (device.type() != Device.Type.OTN) && device.type() != Device.Type.CONTROLLER) {
+                 sendMessage(deviceMessage(new DeviceEvent(DEVICE_ADDED, device)));
+             }
+         }
+-- 
+2.15.2 (Apple Git-101.1)
+
