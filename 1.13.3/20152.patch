@@ -1,29 +1,15 @@
-From 61aa1a348321bdeaffc2247a11a7482309149423 Mon Sep 17 00:00:00 2001
+From 5e23bc376d4be9d8d3bb57791cf437de7dba0b12 Mon Sep 17 00:00:00 2001
 From: Jian Li <pyguni@gmail.com>
 Date: Sat, 27 Oct 2018 20:32:24 +0900
 Subject: [PATCH] Fix: resolve nicira extension serialization issue
 
 Change-Id: I65e71abb957f12f34c168fa102e9d9d512bcf907
 ---
- .../impl/OpenstackSecurityGroupHandler.java                | 2 +-
  .../java/org/onosproject/driver/extensions/NiciraCt.java   | 7 ++++++-
  .../onosproject/driver/extensions/NiciraMatchCtMark.java   | 5 ++++-
  .../onosproject/driver/extensions/NiciraMatchCtState.java  | 5 ++++-
- 4 files changed, 15 insertions(+), 4 deletions(-)
+ 3 files changed, 14 insertions(+), 3 deletions(-)
 
-diff --git a/apps/openstacknetworking/app/src/main/java/org/onosproject/openstacknetworking/impl/OpenstackSecurityGroupHandler.java b/apps/openstacknetworking/app/src/main/java/org/onosproject/openstacknetworking/impl/OpenstackSecurityGroupHandler.java
-index 2308015448..c1367cf75f 100644
---- a/apps/openstacknetworking/app/src/main/java/org/onosproject/openstacknetworking/impl/OpenstackSecurityGroupHandler.java
-+++ b/apps/openstacknetworking/app/src/main/java/org/onosproject/openstacknetworking/impl/OpenstackSecurityGroupHandler.java
-@@ -160,7 +160,7 @@ public class OpenstackSecurityGroupHandler {
-     protected StorageService storageService;
- 
-     private static final KryoNamespace SERIALIZER_PORT = KryoNamespace.newBuilder()
--            .register(KryoNamespaces.API)
-+            .register(KryoNamespaces.BASIC)
-             .register(Port.class)
-             .register(NeutronPort.class)
-             .register(NeutronIP.class)
 diff --git a/drivers/default/src/main/java/org/onosproject/driver/extensions/NiciraCt.java b/drivers/default/src/main/java/org/onosproject/driver/extensions/NiciraCt.java
 index 1828a658fe..73f37c875e 100644
 --- a/drivers/default/src/main/java/org/onosproject/driver/extensions/NiciraCt.java
