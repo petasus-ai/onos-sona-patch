@@ -1,0 +1,273 @@
+From 3cb9546e9e1e129169958acce12056be72ab605f Mon Sep 17 00:00:00 2001
+From: Carmelo Cascone <carmelo@opennetworking.org>
+Date: Fri, 8 Feb 2019 14:40:56 -0800
+Subject: [PATCH 2/3] Re-package grpc and protobuf with the right group id and
+ version
+
+Change-Id: Ib1a17d917a061d3cce32eed3e72b18c596ccff69
+---
+ apps/kafka-integration/BUILD             |  2 +-
+ apps/openstacktelemetry/BUILD            | 14 +++----
+ protocols/gnmi/ctl/BUILD                 |  2 +-
+ protocols/grpc/BUILD                     | 50 +++++++++++++++++-------
+ protocols/p4runtime/ctl/BUILD            |  2 +-
+ tools/build/bazel/grpc_workspace.bzl     |  6 +--
+ tools/build/bazel/protobuf_workspace.bzl |  6 +--
+ tools/build/bazel/variables.bzl          |  3 ++
+ 8 files changed, 54 insertions(+), 31 deletions(-)
+
+diff --git a/apps/kafka-integration/BUILD b/apps/kafka-integration/BUILD
+index ffed824454..ab04e38a7b 100644
+--- a/apps/kafka-integration/BUILD
++++ b/apps/kafka-integration/BUILD
+@@ -1,6 +1,6 @@
+ BUNDLES = [
+     "@kafka_clients//jar",
+-    "//protocols/grpc:protobuf-java-bundle",
++    "//protocols/grpc:protobuf-java",
+     "//incubator/protobuf/models:onos-incubator-protobuf-models",
+     "//incubator/protobuf/models/proto:onos-incubator-protobuf-models-proto",
+     "//apps/kafka-integration/api:onos-apps-kafka-integration-api",
+diff --git a/apps/openstacktelemetry/BUILD b/apps/openstacktelemetry/BUILD
+index 8fbab7238e..039c0ce9aa 100644
+--- a/apps/openstacktelemetry/BUILD
++++ b/apps/openstacktelemetry/BUILD
+@@ -24,13 +24,13 @@ BUNDLES = [
+     "@jetty_websocket//jar",
+     "@servlet_api//jar",
+     # gRPC dependencies (with patched core)
+-    "//protocols/grpc:grpc-bundle-core",
+-    "//protocols/grpc:grpc-bundle-stub",
+-    "//protocols/grpc:grpc-bundle-netty",
+-    "//protocols/grpc:grpc-bundle-auth",
+-    "//protocols/grpc:grpc-bundle-protobuf",
+-    "//protocols/grpc:grpc-bundle-protobuf-lite",
+-    "//protocols/grpc:protobuf-java-bundle",
++    "//protocols/grpc:grpc-core",
++    "//protocols/grpc:grpc-stub",
++    "//protocols/grpc:grpc-netty",
++    "//protocols/grpc:grpc-auth",
++    "//protocols/grpc:grpc-protobuf",
++    "//protocols/grpc:grpc-protobuf-lite",
++    "//protocols/grpc:protobuf-java",
+     "@com_google_api_grpc_proto_google_common_protos//jar",
+     "@com_google_errorprone_error_prone_annotations//jar",
+     "@com_google_auth_google_auth_library_credentials//jar",
+diff --git a/protocols/gnmi/ctl/BUILD b/protocols/gnmi/ctl/BUILD
+index 9a7ee7c56f..e12a8ce453 100644
+--- a/protocols/gnmi/ctl/BUILD
++++ b/protocols/gnmi/ctl/BUILD
+@@ -3,7 +3,7 @@ COMPILE_DEPS = CORE_DEPS + KRYO + [
+     "//protocols/gnmi/stub:onos-protocols-gnmi-stub",
+     "//protocols/grpc/api:onos-protocols-grpc-api",
+     "//protocols/grpc/ctl:onos-protocols-grpc-ctl",
+-    "//protocols/grpc:grpc-bundle-core",
++    "//protocols/grpc:grpc-core",
+     "@com_google_protobuf//:protobuf_java",
+     "@io_grpc_grpc_java//netty",
+     "@io_grpc_grpc_java//protobuf-lite",
+diff --git a/protocols/grpc/BUILD b/protocols/grpc/BUILD
+index 89c720f18c..bc75b3406f 100644
+--- a/protocols/grpc/BUILD
++++ b/protocols/grpc/BUILD
+@@ -1,17 +1,19 @@
+ load("//tools/build/bazel:osgi_java_library.bzl", "wrapped_osgi_jar")
++load("//tools/build/bazel:variables.bzl", "GRPC_JAVA_VERSION")
++load("//tools/build/bazel:variables.bzl", "PROTOBUF_VERSION")
+ 
+ BUNDLES = [
+     "//protocols/grpc/proto:onos-protocols-grpc-proto",
+     "//protocols/grpc/api:onos-protocols-grpc-api",
+     "//protocols/grpc/ctl:onos-protocols-grpc-ctl",
+     # gRPC dependencies (with patched core)
+-    ":grpc-bundle-core",
+-    ":grpc-bundle-stub",
+-    ":grpc-bundle-netty",
+-    ":grpc-bundle-auth",
+-    ":grpc-bundle-protobuf",
+-    ":grpc-bundle-protobuf-lite",
+-    ":protobuf-java-bundle",
++    ":grpc-core",
++    ":grpc-stub",
++    ":grpc-netty",
++    ":grpc-auth",
++    ":grpc-protobuf",
++    ":grpc-protobuf-lite",
++    ":protobuf-java",
+     "@com_google_api_grpc_proto_google_common_protos//jar",
+     "@com_google_errorprone_error_prone_annotations//jar",
+     "@com_google_auth_google_auth_library_credentials//jar",
+@@ -30,12 +32,16 @@ onos_app(
+ )
+ 
+ # Wrap protobuf and grpc-related JARs in OSGi-compatible ones, since the
+-# original one are built with Bazel and NOT imported via mvn.
++# original ones are built with Bazel and NOT imported via mvn.
+ 
+ # FIXME: consider moving these rules somewhere else as other apps depend on it
+ #  (e.g. openstacktelemetry and kafka-integration) but they don't directly
+ #  depend on any onos-protocols-grpc-* module.
+ 
++GRPC_GROUP_ID = "io.grpc"
++
++PROTOBUF_GROUP_ID = "com.google.protobuf"
++
+ wrapped_osgi_jar(
+     # Differently from the official "grpc-core" package, here we also include
+     # "grpc-context" to solve the OSGI split-brain problem:
+@@ -43,8 +49,10 @@ wrapped_osgi_jar(
+     # We use patched Bazel BUILD files to package together core and context (see
+     # tools/build/bazel/grpc_workspace.bzl). If you need grpc-context as a
+     # compile-time dependency, please use this one.
+-    name = "grpc-bundle-core",
++    name = "grpc-core",
++    group = GRPC_GROUP_ID,
+     jar = "@io_grpc_grpc_java//core",
++    version = GRPC_JAVA_VERSION,
+     visibility = ["//visibility:public"],
+     deps = [
+         "@io_opencensus_opencensus_api//jar",
+@@ -52,8 +60,10 @@ wrapped_osgi_jar(
+ )
+ 
+ wrapped_osgi_jar(
+-    name = "grpc-bundle-stub",
++    name = "grpc-stub",
++    group = GRPC_GROUP_ID,
+     jar = "@io_grpc_grpc_java//stub",
++    version = GRPC_JAVA_VERSION,
+     visibility = ["//visibility:public"],
+     deps = [
+         "@io_grpc_grpc_java//core",
+@@ -61,8 +71,10 @@ wrapped_osgi_jar(
+ )
+ 
+ wrapped_osgi_jar(
+-    name = "grpc-bundle-netty",
++    name = "grpc-netty",
++    group = GRPC_GROUP_ID,
+     jar = "@io_grpc_grpc_java//netty",
++    version = GRPC_JAVA_VERSION,
+     visibility = ["//visibility:public"],
+     deps = [
+         "@io_grpc_grpc_java//core",
+@@ -76,8 +88,10 @@ wrapped_osgi_jar(
+ )
+ 
+ wrapped_osgi_jar(
+-    name = "grpc-bundle-auth",
++    name = "grpc-auth",
++    group = GRPC_GROUP_ID,
+     jar = "@io_grpc_grpc_java//auth",
++    version = GRPC_JAVA_VERSION,
+     visibility = ["//visibility:public"],
+     deps = [
+         "@com_google_auth_google_auth_library_credentials//jar",
+@@ -86,8 +100,10 @@ wrapped_osgi_jar(
+ )
+ 
+ wrapped_osgi_jar(
+-    name = "grpc-bundle-protobuf",
++    name = "grpc-protobuf",
++    group = GRPC_GROUP_ID,
+     jar = "@io_grpc_grpc_java//protobuf",
++    version = GRPC_JAVA_VERSION,
+     visibility = ["//visibility:public"],
+     deps = [
+         "@com_google_api_grpc_proto_google_common_protos//jar",
+@@ -97,8 +113,10 @@ wrapped_osgi_jar(
+ )
+ 
+ wrapped_osgi_jar(
+-    name = "grpc-bundle-protobuf-lite",
++    name = "grpc-protobuf-lite",
++    group = GRPC_GROUP_ID,
+     jar = "@io_grpc_grpc_java//protobuf-lite",
++    version = GRPC_JAVA_VERSION,
+     visibility = ["//visibility:public"],
+     deps = [
+         "@com_google_protobuf//:protobuf_java",
+@@ -107,8 +125,10 @@ wrapped_osgi_jar(
+ )
+ 
+ wrapped_osgi_jar(
+-    name = "protobuf-java-bundle",
++    name = "protobuf-java",
++    group = PROTOBUF_GROUP_ID,
+     jar = "@com_google_protobuf//:protobuf_java",
++    version = PROTOBUF_VERSION,
+     visibility = ["//visibility:public"],
+     deps = [],
+ )
+diff --git a/protocols/p4runtime/ctl/BUILD b/protocols/p4runtime/ctl/BUILD
+index 5c9133d34e..31cd18482a 100644
+--- a/protocols/p4runtime/ctl/BUILD
++++ b/protocols/p4runtime/ctl/BUILD
+@@ -5,7 +5,7 @@ COMPILE_DEPS = CORE_DEPS + KRYO + [
+     "//protocols/p4runtime/api:onos-protocols-p4runtime-api",
+     "//protocols/p4runtime/proto:onos-protocols-p4runtime-proto",
+     "@com_google_protobuf//:protobuf_java",
+-    "//protocols/grpc:grpc-bundle-core",
++    "//protocols/grpc:grpc-core",
+     "@io_grpc_grpc_java//netty",
+     "@io_grpc_grpc_java//protobuf-lite",
+     "@io_grpc_grpc_java//stub",
+diff --git a/tools/build/bazel/grpc_workspace.bzl b/tools/build/bazel/grpc_workspace.bzl
+index a14b1a560a..8b1e1692f5 100644
+--- a/tools/build/bazel/grpc_workspace.bzl
++++ b/tools/build/bazel/grpc_workspace.bzl
+@@ -1,6 +1,6 @@
+ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
++load("//tools/build/bazel:variables.bzl", "GRPC_JAVA_VERSION")
+ 
+-GRPC_VER = "1.14.0"
+ GRPC_SHA = "d216c29f7e0eb4dce0192abbaaee9baf046a373805b6f45be3e5056ab0a616db"
+ 
+ GAPIS_COMMIT = "37cc0e5acae50ee91f00827a7010c3b07dfa5311"
+@@ -10,9 +10,9 @@ def generate_grpc():
+     # Patched grpc-java that fixes the OSGi split problem.
+     http_archive(
+         name = "io_grpc_grpc_java",
+-        urls = ["https://github.com/opennetworkinglab/grpc-java/archive/v%s-patched.zip" % GRPC_VER],
++        urls = ["https://github.com/opennetworkinglab/grpc-java/archive/v%s-patched.zip" % GRPC_JAVA_VERSION],
+         sha256 = GRPC_SHA,
+-        strip_prefix = "grpc-java-%s-patched" % GRPC_VER,
++        strip_prefix = "grpc-java-%s-patched" % GRPC_JAVA_VERSION,
+     )
+ 
+     # Google APIs protos (status.proto, etc.)
+diff --git a/tools/build/bazel/protobuf_workspace.bzl b/tools/build/bazel/protobuf_workspace.bzl
+index e850eb6ec6..bf7e62b44c 100644
+--- a/tools/build/bazel/protobuf_workspace.bzl
++++ b/tools/build/bazel/protobuf_workspace.bzl
+@@ -1,13 +1,13 @@
+ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
++load("//tools/build/bazel:variables.bzl", "PROTOBUF_VERSION")
+ 
+-PROTOBUF_VER = "3.6.1.3"
+ SHA = "9510dd2afc29e7245e9e884336f848c8a6600a14ae726adb6befdb4f786f0be2"
+ 
+ def generate_protobuf():
+     http_archive(
+         name = "com_google_protobuf",
+         urls = ["https://github.com/protocolbuffers/protobuf/archive/v%s.zip" %
+-                PROTOBUF_VER],
++                PROTOBUF_VERSION],
+         sha256 = SHA,
+-        strip_prefix = "protobuf-" + PROTOBUF_VER,
++        strip_prefix = "protobuf-" + PROTOBUF_VERSION,
+     )
+diff --git a/tools/build/bazel/variables.bzl b/tools/build/bazel/variables.bzl
+index 2400a514c0..90d95f959e 100644
+--- a/tools/build/bazel/variables.bzl
++++ b/tools/build/bazel/variables.bzl
+@@ -4,3 +4,6 @@ ONOS_VERSION = "1.15.1-SNAPSHOT"
+ DEFAULT_APP_CATEGORY = "Utility"
+ ONOS_ARTIFACT_BASE = "onos-"
+ APP_PREFIX = ONOS_GROUP_ID + "."
++
++GRPC_JAVA_VERSION = "1.14.0"
++PROTOBUF_VERSION = "3.6.1.3"
+-- 
+2.18.0
+
