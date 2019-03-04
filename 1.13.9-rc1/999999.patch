@@ -1,15 +1,15 @@
-From a83441a1096c13b7baa46f84405e37fed8e0da78 Mon Sep 17 00:00:00 2001
+From 5c06ba7524224666b60b07bec08972627108855d Mon Sep 17 00:00:00 2001
 From: Jian Li <pyguni@gmail.com>
 Date: Thu, 4 Oct 2018 11:40:10 +0900
 Subject: [PATCH] Cherry-pick lib deps from master branch
 
 ---
- lib/BUCK      | 55 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ lib/BUCK      | 54 +++++++++++++++++++++++++++++++++++++++++++++++++++
  lib/deps.json | 29 +++++++++++++++++----------
- 2 files changed, 73 insertions(+), 11 deletions(-)
+ 2 files changed, 73 insertions(+), 10 deletions(-)
 
 diff --git a/lib/BUCK b/lib/BUCK
-index d78e55a952..8db1bee8e7 100644
+index f3f38daffc..c84dedd002 100644
 --- a/lib/BUCK
 +++ b/lib/BUCK
 @@ -466,6 +466,42 @@ remote_jar (
@@ -80,13 +80,8 @@ index d78e55a952..8db1bee8e7 100644
  remote_jar (
    name = 'jetty-continuation',
    out = 'jetty-continuation-9.2.21.v20170120.jar',
-@@ -1651,4 +1705,3 @@ remote_jar (
-   maven_coords = 'org.gnu.inet:libidn:jar:NON-OSGI:1.15',
-   visibility = [ 'PUBLIC' ],
- )
--
 diff --git a/lib/deps.json b/lib/deps.json
-index 0837bd8e28..47cfd1efe5 100644
+index 27cac70778..8882986414 100644
 --- a/lib/deps.json
 +++ b/lib/deps.json
 @@ -16,7 +16,10 @@
@@ -157,5 +152,5 @@ index 0837bd8e28..47cfd1efe5 100644
 +}
 \ No newline at end of file
 -- 
-2.17.1 (Apple Git-112)
+2.17.2 (Apple Git-113)
 
