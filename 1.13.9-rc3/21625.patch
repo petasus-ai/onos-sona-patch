@@ -1,0 +1,80 @@
+From 8537417436dc7aa6c85bf882e4389867bfd8081b Mon Sep 17 00:00:00 2001
+From: Jian Li <pyguni@gmail.com>
+Date: Sun, 24 Mar 2019 18:31:44 +0900
+Subject: [PATCH 1/2] Allow to specify the serialized payload byte array in TCP
+ class
+
+This feature is needed in case we attach the segmented TCP
+payload such as HTTP into TCP to allow to send out the
+payload which is larger than MTU size
+
+Change-Id: Ie77ec4a0e706368e6f46932f802a1ab9a1eb6b7c
+---
+ .../src/main/java/org/onlab/packet/TCP.java   | 30 ++++++++++++++++++-
+ 1 file changed, 29 insertions(+), 1 deletion(-)
+
+diff --git a/utils/misc/src/main/java/org/onlab/packet/TCP.java b/utils/misc/src/main/java/org/onlab/packet/TCP.java
+index 410be78f59..9cbf4f751c 100644
+--- a/utils/misc/src/main/java/org/onlab/packet/TCP.java
++++ b/utils/misc/src/main/java/org/onlab/packet/TCP.java
+@@ -22,7 +22,8 @@ import java.nio.ByteBuffer;
+ import java.util.Arrays;
+ 
+ import static com.google.common.base.MoreObjects.toStringHelper;
+-import static org.onlab.packet.PacketUtils.*;
++import static org.onlab.packet.PacketUtils.checkHeaderLength;
++import static org.onlab.packet.PacketUtils.checkInput;
+ 
+ /**
+  * Implements TCP packet format.
+@@ -43,6 +44,8 @@ public class TCP extends BasePacket {
+     protected short urgentPointer;
+     protected byte[] options;
+ 
++    protected byte[] payloadBytes;
++
+     /**
+      * Gets TCP source port.
+      *
+@@ -250,6 +253,26 @@ public class TCP extends BasePacket {
+         return this;
+     }
+ 
++    /**
++     * Obtains the payload in byte array format.
++     *
++     * @return the payload in byte array format
++     */
++    public byte[] getPayloadBytes() {
++        return this.payloadBytes;
++    }
++
++    /**
++     * Sets the payload in byte array format.
++     *
++     * @param payloadBytes payload in byte array format
++     * @return this
++     */
++    public TCP setPayloadBytes(byte[] payloadBytes) {
++        this.payloadBytes = payloadBytes;
++        return this;
++    }
++
+     /**
+      * Serializes the packet. Will compute and set the following fields if they
+      * are set to specific values at the time serialize is called: -checksum : 0
+@@ -269,6 +292,11 @@ public class TCP extends BasePacket {
+             length += payloadData.length;
+         }
+ 
++        if (this.payloadBytes != null) {
++            payloadData = this.payloadBytes;
++            length += payloadData.length;
++        }
++
+         final byte[] data = new byte[length];
+         final ByteBuffer bb = ByteBuffer.wrap(data);
+ 
+-- 
+2.17.2 (Apple Git-113)
+
