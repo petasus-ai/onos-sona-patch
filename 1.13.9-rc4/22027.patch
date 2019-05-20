@@ -1,4 +1,4 @@
-From b109b73d39aca5198f156f3e6cf7d16a721afd2f Mon Sep 17 00:00:00 2001
+From 5694f7b41cd8d8b0eac380355c9f8158c065bd7d Mon Sep 17 00:00:00 2001
 From: Jian Li <pyguni@gmail.com>
 Date: Fri, 17 May 2019 19:50:28 +0900
 Subject: [PATCH] Allow to inject external_id field when creating an OVSDB
@@ -7,8 +7,8 @@ Subject: [PATCH] Allow to inject external_id field when creating an OVSDB
 Change-Id: Iabc69771ac5dd1a321f8c9cc440fa2e166965a17
 ---
  .../ovsdb/controller/OvsdbInterface.java      | 49 +++++++++++++++----
- .../controller/driver/DefaultOvsdbClient.java | 21 ++++++--
- 2 files changed, 57 insertions(+), 13 deletions(-)
+ .../controller/driver/DefaultOvsdbClient.java | 13 +++--
+ 2 files changed, 49 insertions(+), 13 deletions(-)
 
 diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbInterface.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbInterface.java
 index b1946957bb..9a60372499 100644
@@ -126,7 +126,7 @@ index b1946957bb..9a60372499 100644
      }
  }
 diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
-index ee0ac0f3b5..ae0f4352b7 100644
+index ee0ac0f3b5..af6d1e54eb 100644
 --- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
 +++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
 @@ -1112,7 +1112,6 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
@@ -166,19 +166,6 @@ index ee0ac0f3b5..ae0f4352b7 100644
          Insert intfInsert = new Insert(dbSchema.getTableSchema(INTERFACE), INTERFACE, intf.getRow());
          operations.add(intfInsert);
  
-@@ -1999,4 +2006,12 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
-     public Optional<DeviceCpuStats> getDeviceCpuUsage() {
-         return Optional.empty();
-     }
-+
-+    private <I, O> ListenableFuture<O> futureTransform(
-+            ListenableFuture<I> input, Function<? super I, ? extends O> function) {
-+        // Wrapper around deprecated Futures.transform() method. As per Guava
-+        // recommendation, passing MoreExecutors.directExecutor() for identical
-+        // behavior.
-+        return Futures.transform(input, function, MoreExecutors.directExecutor());
-+    }
- }
 -- 
 2.20.1 (Apple Git-117)
 
