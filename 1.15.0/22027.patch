@@ -1,14 +1,14 @@
-From a3edff949b77e6e785c8933fa0dcd59dd05b1cdd Mon Sep 17 00:00:00 2001
+From aebe30c47b01d64017a2edd834a03fa2986f6623 Mon Sep 17 00:00:00 2001
 From: Jian Li <pyguni@gmail.com>
 Date: Fri, 17 May 2019 19:50:28 +0900
-Subject: [PATCH 1/2] Allow to inject external_id field when creating an OVSDB
+Subject: [PATCH] Allow to inject external_id field when creating an OVSDB
  interface
 
 Change-Id: Iabc69771ac5dd1a321f8c9cc440fa2e166965a17
 ---
  .../ovsdb/controller/OvsdbInterface.java      | 49 +++++++++++++++----
- .../controller/driver/DefaultOvsdbClient.java | 15 ++++--
- 2 files changed, 50 insertions(+), 14 deletions(-)
+ .../controller/driver/DefaultOvsdbClient.java | 13 +++--
+ 2 files changed, 49 insertions(+), 13 deletions(-)
 
 diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbInterface.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbInterface.java
 index b1946957bb..9a60372499 100644
@@ -126,10 +126,10 @@ index b1946957bb..9a60372499 100644
      }
  }
 diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
-index 6d08bcbb2b..5914dc7384 100644
+index 9ffa26ead0..51fc01cf88 100644
 --- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
 +++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
-@@ -1097,7 +1097,6 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+@@ -1096,7 +1096,6 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
  
          if (getPortUuid(ovsdbIface.name(), bridgeUuid) != null) {
              log.warn("Interface {} already exists", ovsdbIface.name());
@@ -137,7 +137,7 @@ index 6d08bcbb2b..5914dc7384 100644
              return false;
          }
  
-@@ -1118,11 +1117,12 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+@@ -1117,11 +1116,12 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
          List<Mutation> mutations = Lists.newArrayList(mutation);
          operations.add(new Mutate(dbSchema.getTableSchema(BRIDGE), conditions, mutations));
  
@@ -152,7 +152,7 @@ index 6d08bcbb2b..5914dc7384 100644
  
          if (ovsdbIface.mtu().isPresent()) {
              Set<Long> mtuSet = Sets.newConcurrentHashSet();
-@@ -1132,6 +1132,13 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+@@ -1131,6 +1131,13 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
          }
  
          intf.setOptions(ovsdbIface.options());
@@ -166,13 +166,6 @@ index 6d08bcbb2b..5914dc7384 100644
          Insert intfInsert = new Insert(dbSchema.getTableSchema(INTERFACE), INTERFACE, intf.getRow());
          operations.add(intfInsert);
  
-@@ -1990,4 +1997,4 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
-         // behavior.
-         return Futures.transform(input, function, MoreExecutors.directExecutor());
-     }
--}
-+}
-\ No newline at end of file
 -- 
 2.20.1 (Apple Git-117)
 
