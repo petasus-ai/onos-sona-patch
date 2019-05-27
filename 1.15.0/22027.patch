@@ -1,4 +1,4 @@
-From f5c9276f1af4a9b896ef214678e5257f3ec4adac Mon Sep 17 00:00:00 2001
+From a3edff949b77e6e785c8933fa0dcd59dd05b1cdd Mon Sep 17 00:00:00 2001
 From: Jian Li <pyguni@gmail.com>
 Date: Fri, 17 May 2019 19:50:28 +0900
 Subject: [PATCH 1/2] Allow to inject external_id field when creating an OVSDB
