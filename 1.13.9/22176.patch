@@ -1,18 +1,19 @@
-From 41baad6ed366a31ace1c9bbe8efe70219b9d53ef Mon Sep 17 00:00:00 2001
+From 605785dcbb049daf8555f1ef6e70b32f912c766d Mon Sep 17 00:00:00 2001
 From: Jian Li <pyguni@gmail.com>
-Date: Wed, 12 Jun 2019 13:52:14 +0900
-Subject: [PATCH] Fix: add OVS controller first, and remove OVS controller
+Date: Wed, 12 Jun 2019 13:11:51 +0900
+Subject: [PATCH] Fix: add new ovs controller first, remove ovs controller
  afterward
 
+Change-Id: I7ed7f9b01d512ece3781891d69aaf76ba255fd1b
 ---
- .../ovsdb/controller/driver/DefaultOvsdbClient.java          | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ .../ovsdb/controller/driver/DefaultOvsdbClient.java           | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
-index af6d1e54eb..0757d26f4a 100644
+index 5914dc7384..c32c34104e 100644
 --- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
 +++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
-@@ -577,8 +577,6 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+@@ -575,8 +575,6 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
              return;
          }
  
@@ -21,13 +22,12 @@ index af6d1e54eb..0757d26f4a 100644
          newControllers.stream().map(c -> {
              Controller controller = (Controller) TableGenerator
                      .createTable(dbSchema, OvsdbTable.CONTROLLER);
-@@ -601,6 +599,9 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
-         Bridge bridge = (Bridge) TableGenerator.getTable(dbSchema, bridgeRow, OvsdbTable.BRIDGE);
-         bridge.setController(OvsdbSet.ovsdbSet(newControllerUuids));
-         updateConfig(BRIDGE, UUID, bridgeUuid.value(), bridge.getRow());
-+
+@@ -586,6 +584,8 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+                                     bridgeUuid.value(),
+                                     c.getRow()));
+ 
 +        removeControllers.forEach(c -> deleteConfig(CONTROLLER, UUID, c.getRow().uuid().value(),
-+                                                    BRIDGE, BRIDGE_CONTROLLER, c.getRow().uuid()));
++                BRIDGE, BRIDGE_CONTROLLER, c.getRow().uuid()));
      }
  
      @Override
