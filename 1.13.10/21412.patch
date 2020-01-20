@@ -1,0 +1,139 @@
+From d3686b4a055fbf4690df10cc74f6364745e8c8c3 Mon Sep 17 00:00:00 2001
+From: Jian Li <pyguni@gmail.com>
+Date: Sun, 24 Feb 2019 23:01:03 +0900
+Subject: [PATCH] Add NiciraNAT serializer for NiciraCt to
+ serialize/deserialize
+
+Change-Id: I618cafa6cf2a71aa218879556ba51b2f21aa944f
+---
+ .../driver/extensions/NiciraCt.java           |  3 +
+ .../serializers/NiciraNatSerializer.java      | 69 +++++++++++++++++++
+ .../extensions/serializers/package-info.java  | 19 +++++
+ 3 files changed, 91 insertions(+)
+ create mode 100644 drivers/default/src/main/java/org/onosproject/driver/extensions/serializers/NiciraNatSerializer.java
+ create mode 100644 drivers/default/src/main/java/org/onosproject/driver/extensions/serializers/package-info.java
+
+diff --git a/drivers/default/src/main/java/org/onosproject/driver/extensions/NiciraCt.java b/drivers/default/src/main/java/org/onosproject/driver/extensions/NiciraCt.java
+index 73f37c875e..19b30dbace 100644
+--- a/drivers/default/src/main/java/org/onosproject/driver/extensions/NiciraCt.java
++++ b/drivers/default/src/main/java/org/onosproject/driver/extensions/NiciraCt.java
+@@ -19,6 +19,7 @@ package org.onosproject.driver.extensions;
+ import com.google.common.base.MoreObjects;
+ import com.google.common.collect.Maps;
+ import org.onlab.util.KryoNamespace;
++import org.onosproject.driver.extensions.serializers.NiciraNatSerializer;
+ import org.onosproject.net.flow.AbstractExtension;
+ import org.onosproject.net.flow.instructions.ExtensionTreatment;
+ import org.onosproject.net.flow.instructions.ExtensionTreatmentType;
+@@ -44,6 +45,8 @@ public class NiciraCt extends AbstractExtension implements ExtensionTreatment {
+                                                 .register(HashMap.class)
+                                                 .register(ArrayList.class)
+                                                 .register(ExtensionTreatment.class)
++                                                .register(new NiciraNatSerializer(),
++                                                              NiciraNat.class)
+                                                 .build();
+ 
+     /**
+diff --git a/drivers/default/src/main/java/org/onosproject/driver/extensions/serializers/NiciraNatSerializer.java b/drivers/default/src/main/java/org/onosproject/driver/extensions/serializers/NiciraNatSerializer.java
+new file mode 100644
+index 0000000000..58340c2800
+--- /dev/null
++++ b/drivers/default/src/main/java/org/onosproject/driver/extensions/serializers/NiciraNatSerializer.java
+@@ -0,0 +1,69 @@
++/*
++ * Copyright 2019-present Open Networking Foundation
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.onosproject.driver.extensions.serializers;
++
++import com.esotericsoftware.kryo.Kryo;
++import com.esotericsoftware.kryo.Serializer;
++import com.esotericsoftware.kryo.io.Input;
++import com.esotericsoftware.kryo.io.Output;
++import org.onlab.packet.IpAddress;
++import org.onosproject.driver.extensions.NiciraNat;
++
++/**
++ * Kryo serializer for {@link NiciraNat}.
++ */
++public class NiciraNatSerializer extends Serializer<NiciraNat> {
++
++    /**
++     * Creates {@link NiciraNat} serializer instance.
++     */
++    public NiciraNatSerializer() {
++        // non-null, immutable
++        super(false, true);
++    }
++
++    @Override
++    public void write(Kryo kryo, Output output, NiciraNat object) {
++        output.writeInt(object.niciraNatFlags());
++        output.writeInt(object.niciraNatPresentFlags());
++        output.writeInt(object.niciraNatPortMin());
++        output.writeInt(object.niciraNatPortMax());
++
++        output.writeBytes(object.niciraNatIpAddressMin().toOctets());
++        output.writeBytes(object.niciraNatIpAddressMax().toOctets());
++    }
++
++    @Override
++    public NiciraNat read(Kryo kryo, Input input, Class<NiciraNat> type) {
++        int natFlags = input.readInt();
++        int natPresentFlags = input.readInt();
++        int natPortMin = input.readInt();
++        int natPortMax = input.readInt();
++
++        // TODO: IPv6 address should also be supported
++        byte[] minOcts = new byte[4];
++        byte[] maxOcts = new byte[4];
++
++        input.readBytes(minOcts);
++        input.readBytes(maxOcts);
++
++        IpAddress natIpAddressMin = IpAddress.valueOf(IpAddress.Version.INET, minOcts);
++        IpAddress natIpAddressMax = IpAddress.valueOf(IpAddress.Version.INET, maxOcts);
++
++        return new NiciraNat(natFlags, natPresentFlags, natPortMin, natPortMax,
++                natIpAddressMin, natIpAddressMax);
++    }
++}
+diff --git a/drivers/default/src/main/java/org/onosproject/driver/extensions/serializers/package-info.java b/drivers/default/src/main/java/org/onosproject/driver/extensions/serializers/package-info.java
+new file mode 100644
+index 0000000000..39d13866ac
+--- /dev/null
++++ b/drivers/default/src/main/java/org/onosproject/driver/extensions/serializers/package-info.java
+@@ -0,0 +1,19 @@
++/*
++ * Copyright 2019-present Open Networking Foundation
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++/**
++ * Implementations of the serializer for NICIRA and OFDPA extensions.
++ */
++package org.onosproject.driver.extensions.serializers;
+-- 
+2.20.1 (Apple Git-117)
+

@@ -1,0 +1,24 @@
+From 294e3f80c37b10e77a6db99fd6c23816eecbf536 Mon Sep 17 00:00:00 2001
+From: Jian Li <pyguni@gmail.com>
+Date: Tue, 5 Nov 2019 20:28:58 +0900
+Subject: [PATCH] Remove system:shutdown instruction from ONOS CLI
+
+Change-Id: I6f5ea7fceea3cdb614e070dbec3960622bf36535
+---
+ .../resources/org/apache/karaf/branding/branding.properties     | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/package/branding/src/main/resources/org/apache/karaf/branding/branding.properties b/tools/package/branding/src/main/resources/org/apache/karaf/branding/branding.properties
+index 69a74ba0d6..70d7630cd6 100644
+--- a/tools/package/branding/src/main/resources/org/apache/karaf/branding/branding.properties
++++ b/tools/package/branding/src/main/resources/org/apache/karaf/branding/branding.properties
+@@ -27,5 +27,5 @@ Come help out! Find out how at: contribute.onosproject.org \r\n\
+ \r\n\
+   Hit '\u001B[1m<tab>\u001B[0m' for a list of available commands\r\n\
+      and '\u001B[1m[cmd] --help\u001B[0m' for help on a specific command.\r\n\
+-  Hit '\u001B[1m<ctrl-d>\u001B[0m' or type '\u001B[1msystem:shutdown\u001B[0m' or '\u001B[1mlogout\u001B[0m' to shutdown ONOS.\r\n
++  Hit '\u001B[1m<ctrl-d>\u001B[0m' or type '\u001B[1mlogout\u001B[0m' to logout from ONOS.\r\n
+ prompt = \u001B[32monos> \u001B[0m
+-- 
+2.21.0 (Apple Git-122)
+
