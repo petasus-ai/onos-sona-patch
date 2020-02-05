@@ -1,16 +1,16 @@
-From 45772dc500c84d206920c6c96242fe3c1a59642b Mon Sep 17 00:00:00 2001
+From 153858954185e7ef7674c311f353884bfb2bdf90 Mon Sep 17 00:00:00 2001
 From: Jian Li <pyguni@gmail.com>
-Date: Thu, 30 Jan 2020 23:43:16 +0900
-Subject: [PATCH 1/4] [PATCH] Bump up okio to 1.14.0 to fix deps issue in
- influxdb-java
+Date: Wed, 5 Feb 2020 17:42:59 +0900
+Subject: [PATCH] Bump up okio to 1.14.0 to fix deps issue in influxdb-java
 
+Change-Id: I859a8ba7eb7d5b8160d61698159b5032e4465a5d
 ---
- lib/BUCK      |  9 ++++-----
+ lib/BUCK      |  8 ++++----
  lib/deps.json | 42 +++++++++++++-----------------------------
- 2 files changed, 17 insertions(+), 34 deletions(-)
+ 2 files changed, 17 insertions(+), 33 deletions(-)
 
 diff --git a/lib/BUCK b/lib/BUCK
-index ebd35a43ea..9e13472984 100644
+index a095d1a80a..cd663f622e 100644
 --- a/lib/BUCK
 +++ b/lib/BUCK
 @@ -522,10 +522,10 @@ remote_jar (
@@ -28,13 +28,8 @@ index ebd35a43ea..9e13472984 100644
    visibility = [ 'PUBLIC' ],
  )
  
-@@ -1660,4 +1660,3 @@ remote_jar (
-   maven_coords = 'org.gnu.inet:libidn:jar:NON-OSGI:1.15',
-   visibility = [ 'PUBLIC' ],
- )
--
 diff --git a/lib/deps.json b/lib/deps.json
-index 4da1548179..f79384f04a 100644
+index e4d90b2869..4ad22cd320 100644
 --- a/lib/deps.json
 +++ b/lib/deps.json
 @@ -66,10 +66,7 @@
@@ -81,9 +76,9 @@ index 4da1548179..f79384f04a 100644
      "moshi": "mvn:com.squareup.moshi:moshi:1.4.0",
 -    "okio": "mvn:com.squareup.okio:okio:1.11.0",
 +    "okio": "mvn:com.squareup.okio:okio:1.14.0",
-     "jackson-annotations": "mvn:com.fasterxml.jackson.core:jackson-annotations:2.9.5",
-     "jackson-core": "mvn:com.fasterxml.jackson.core:jackson-core:2.9.5",
-     "jackson-databind": "mvn:com.fasterxml.jackson.core:jackson-databind:2.9.5",
+     "jackson-annotations": "mvn:com.fasterxml.jackson.core:jackson-annotations:2.10.0",
+     "jackson-core": "mvn:com.fasterxml.jackson.core:jackson-core:2.10.0",
+     "jackson-databind": "mvn:com.fasterxml.jackson.core:jackson-databind:2.10.0",
 @@ -166,7 +150,7 @@
      "jersey-container-servlet-core": "mvn:org.glassfish.jersey.containers:jersey-container-servlet-core:2.26",
      "jersey-media-multipart": "mvn:org.glassfish.jersey.media:jersey-media-multipart:2.26",
