@@ -1,0 +1,316 @@
+From 0aed0e6cc3d8ebaece2d6dfc10fe5ca30f1317d5 Mon Sep 17 00:00:00 2001
+From: Jian Li <pyguni@gmail.com>
+Date: Sat, 12 Dec 2020 03:54:54 +0900
+Subject: [PATCH 1/2] Support to enable multicast snooping of ovsdb through
+ bridge desc
+
+Change-Id: Ia14e67ab3a5a734a8a0eaa0b7bdda2fc9429c905
+---
+ .../net/behaviour/BridgeDescription.java      | 16 +++++++++
+ .../behaviour/DefaultBridgeDescription.java   | 16 +++++++++
+ .../DefaultBridgeDescriptionTest.java         |  6 +++-
+ .../ovsdb/controller/OvsdbBridge.java         | 34 +++++++++++++++++--
+ .../controller/driver/DefaultOvsdbClient.java |  5 +++
+ .../onosproject/ovsdb/rfc/table/Bridge.java   | 28 ++++++++++++++-
+ 6 files changed, 101 insertions(+), 4 deletions(-)
+
+diff --git a/core/api/src/main/java/org/onosproject/net/behaviour/BridgeDescription.java b/core/api/src/main/java/org/onosproject/net/behaviour/BridgeDescription.java
+index a3b02a8983..5273b87173 100644
+--- a/core/api/src/main/java/org/onosproject/net/behaviour/BridgeDescription.java
++++ b/core/api/src/main/java/org/onosproject/net/behaviour/BridgeDescription.java
+@@ -103,6 +103,15 @@ public interface BridgeDescription extends Description {
+      */
+     Optional<Boolean> disableInBand();
+ 
++    /**
++     * Returns multicast snooping is enabled or not. If set to true, enable multicast
++     * snooping on the bridge.
++     * If it is not set, the multicast snooping is disabled.
++     *
++     * @return true if the multicast snooping is enabled, false otherwise
++     */
++    Optional<Boolean> mcastSnoopingEnable();
++
+     /**
+      * Returns list of Control Protocol Versions supported on device.
+      * @return List of Control Protocol Versions enabled on bridge
+@@ -177,6 +186,13 @@ public interface BridgeDescription extends Description {
+          */
+         Builder disableInBand();
+ 
++        /**
++         * Returns bridge description builder with mcast snooping enabled.
++         *
++         * @return bridge description builder
++         */
++        Builder mcastSnoopingEnable();
++
+         /**
+          * Builds an immutable bridge description.
+          *
+diff --git a/core/api/src/main/java/org/onosproject/net/behaviour/DefaultBridgeDescription.java b/core/api/src/main/java/org/onosproject/net/behaviour/DefaultBridgeDescription.java
+index cc0b837735..609c71b18e 100644
+--- a/core/api/src/main/java/org/onosproject/net/behaviour/DefaultBridgeDescription.java
++++ b/core/api/src/main/java/org/onosproject/net/behaviour/DefaultBridgeDescription.java
+@@ -41,6 +41,7 @@ public final class DefaultBridgeDescription implements BridgeDescription {
+     private final Optional<String> datapathType;
+     private final Optional<List<ControlProtocolVersion>> controlProtocols;
+     private final Optional<Boolean> disableInBand;
++    private final Optional<Boolean> mcastSnoopingEnable;
+ 
+     /* Adds more configurations */
+ 
+@@ -51,6 +52,7 @@ public final class DefaultBridgeDescription implements BridgeDescription {
+                                      Optional<String> datapathId,
+                                      Optional<String> datapathType,
+                                      Optional<Boolean> disableInBand,
++                                     Optional<Boolean> mcastSnoopingEnable,
+                                      Optional<List<ControlProtocolVersion>> controlProtocols) {
+         this.name = checkNotNull(name);
+         this.controllers = controllers;
+@@ -59,6 +61,7 @@ public final class DefaultBridgeDescription implements BridgeDescription {
+         this.datapathId = datapathId;
+         this.datapathType = datapathType;
+         this.disableInBand = disableInBand;
++        this.mcastSnoopingEnable = mcastSnoopingEnable;
+         this.controlProtocols = controlProtocols;
+     }
+ 
+@@ -116,6 +119,11 @@ public final class DefaultBridgeDescription implements BridgeDescription {
+         return disableInBand;
+     }
+ 
++    @Override
++    public Optional<Boolean> mcastSnoopingEnable() {
++        return mcastSnoopingEnable;
++    }
++
+     /**
+      * Creates and returns a new builder instance.
+      *
+@@ -135,6 +143,7 @@ public final class DefaultBridgeDescription implements BridgeDescription {
+         private Optional<String> datapathType = Optional.empty();
+         private Optional<List<ControlProtocolVersion>> controlProtocols = Optional.empty();
+         private Optional<Boolean> disableInBand = Optional.empty();
++        private Optional<Boolean> mcastSnoopingEnable = Optional.empty();
+ 
+         private Builder() {
+         }
+@@ -147,6 +156,7 @@ public final class DefaultBridgeDescription implements BridgeDescription {
+                                                 datapathId,
+                                                 datapathType,
+                                                 disableInBand,
++                                                mcastSnoopingEnable,
+                                                 controlProtocols);
+         }
+ 
+@@ -200,5 +210,11 @@ public final class DefaultBridgeDescription implements BridgeDescription {
+             this.disableInBand = Optional.of(Boolean.TRUE);
+             return this;
+         }
++
++        @Override
++        public BridgeDescription.Builder mcastSnoopingEnable() {
++            this.mcastSnoopingEnable = Optional.of(Boolean.TRUE);
++            return this;
++        }
+     }
+ }
+diff --git a/core/api/src/test/java/org/onosproject/net/behaviour/DefaultBridgeDescriptionTest.java b/core/api/src/test/java/org/onosproject/net/behaviour/DefaultBridgeDescriptionTest.java
+index 9cd59c2b65..86b0a6ad40 100644
+--- a/core/api/src/test/java/org/onosproject/net/behaviour/DefaultBridgeDescriptionTest.java
++++ b/core/api/src/test/java/org/onosproject/net/behaviour/DefaultBridgeDescriptionTest.java
+@@ -24,7 +24,9 @@ import org.onosproject.net.DeviceId;
+ import java.util.List;
+ 
+ import static org.hamcrest.Matchers.is;
+-import static org.junit.Assert.*;
++import static org.junit.Assert.assertNull;
++import static org.junit.Assert.assertThat;
++import static org.junit.Assert.assertTrue;
+ 
+ /**
+  * Unit tests for DefaultBridgeDescription.
+@@ -58,6 +60,7 @@ public class DefaultBridgeDescriptionTest {
+         build.datapathType(type);
+         build.failMode(mode);
+         build.disableInBand();
++        build.mcastSnoopingEnable();
+         build.enableLocalController();
+         BridgeDescription test;
+         test = build.build();
+@@ -68,6 +71,7 @@ public class DefaultBridgeDescriptionTest {
+         assertThat(test.datapathType().get(), is(type));
+         assertThat(test.failMode().get(), is(mode));
+         assertThat(test.disableInBand().get(), is(true));
++        assertThat(test.mcastSnoopingEnable().get(), is(true));
+         assertNull(test.annotations());
+         assertTrue(test.enableLocalController());
+         assertThat(test.deviceId().get(), is(DeviceId.deviceId("of:" + id)));
+diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbBridge.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbBridge.java
+index 6bddef3a95..b568eb07df 100644
+--- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbBridge.java
++++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/OvsdbBridge.java
+@@ -53,6 +53,9 @@ public final class OvsdbBridge {
+     /* other optional configs */
+     private final Map<String, String> otherConfigs;
+ 
++    /* multicast snooping flag */
++    private final Optional<Boolean> mcastSnoopingEnable;
++
+     /**
+      * Default constructor.
+      *
+@@ -62,18 +65,20 @@ public final class OvsdbBridge {
+      * @param datapathType ovs datapath_type
+      * @param controlProtocols list of control protocols
+      * @param otherConfigs other configs
++     * @param mcastSnoopingEnable multicast snooping enable
+      */
+     private OvsdbBridge(String name, Optional<FailMode> failMode,
+                        List<ControllerInfo> controllers,
+                        Optional<String> datapathType,
+                        Optional<List<ControlProtocolVersion>> controlProtocols,
+-                       Map<String, String> otherConfigs) {
++                       Map<String, String> otherConfigs, Optional<Boolean> mcastSnoopingEnable) {
+         this.name = checkNotNull(name);
+         this.failMode = failMode;
+         this.controllers = controllers;
+         this.datapathType = datapathType;
+         this.controlProtocols = controlProtocols;
+         this.otherConfigs = otherConfigs;
++        this.mcastSnoopingEnable = mcastSnoopingEnable;
+     }
+ 
+     /**
+@@ -129,6 +134,15 @@ public final class OvsdbBridge {
+         return otherConfigs;
+     }
+ 
++    /**
++     * Returns multicast snooping flag value of the bridge.
++     *
++     * @return multicast snooping flag
++     */
++    public Optional<Boolean> mcastSnoopingEnable() {
++        return mcastSnoopingEnable;
++    }
++
+     /**
+      * Gets the datapathId of bridge.
+      *
+@@ -164,6 +178,7 @@ public final class OvsdbBridge {
+                 .add("datapathType", datapathType)
+                 .add("controlProtocols", controlProtocols)
+                 .add("otherConfigs", otherConfigs)
++                .add("mcastSnoopingEnable", mcastSnoopingEnable)
+                 .toString();
+     }
+ 
+@@ -196,6 +211,7 @@ public final class OvsdbBridge {
+         private Optional<String> datapathType = Optional.empty();
+         private Map<String, String> otherConfigs = Maps.newHashMap();
+         private Optional<List<ControlProtocolVersion>> controlProtocols = Optional.empty();
++        private Optional<Boolean> mcastSnoopingEnable = Optional.empty();
+ 
+         private Builder() {
+         }
+@@ -219,6 +235,9 @@ public final class OvsdbBridge {
+             if (bridgeDesc.controlProtocols().isPresent()) {
+                 this.controlProtocols = bridgeDesc.controlProtocols();
+             }
++            if (bridgeDesc.mcastSnoopingEnable().isPresent()) {
++                this.mcastSnoopingEnable = bridgeDesc.mcastSnoopingEnable();
++            }
+             this.name = bridgeDesc.name();
+             this.failMode = bridgeDesc.failMode();
+             this.controllers = Lists.newArrayList(bridgeDesc.controllers());
+@@ -230,7 +249,8 @@ public final class OvsdbBridge {
+          * @return ovsdb bridge
+          */
+         public OvsdbBridge build() {
+-            return new OvsdbBridge(name, failMode, controllers, datapathType, controlProtocols, otherConfigs);
++            return new OvsdbBridge(name, failMode, controllers, datapathType,
++                    controlProtocols, otherConfigs, mcastSnoopingEnable);
+         }
+ 
+         /**
+@@ -329,5 +349,15 @@ public final class OvsdbBridge {
+             otherConfigs.put(DATAPATH_ID, Boolean.TRUE.toString());
+             return this;
+         }
++
++        /**
++         * Returns OVSDB bridge builder with a given mcast snooping enable flag.
++         *
++         * @return ovsdb bridge builder
++         */
++        public Builder mcastSnoopingEnable() {
++            this.mcastSnoopingEnable = Optional.of(Boolean.TRUE);
++            return this;
++        }
+     }
+ }
+diff --git a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
+index 2d8ee68e9a..3f0f6b4655 100644
+--- a/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
++++ b/protocols/ovsdb/api/src/main/java/org/onosproject/ovsdb/controller/driver/DefaultOvsdbClient.java
+@@ -497,6 +497,11 @@ public class DefaultOvsdbClient implements OvsdbProviderService, OvsdbClientServ
+                     .collect(Collectors.toCollection(HashSet::new)));
+         }
+ 
++        if (ovsdbBridge.mcastSnoopingEnable().isPresent()) {
++            boolean mcastSnoopingFlag = ovsdbBridge.mcastSnoopingEnable().get();
++            bridge.setMcastSnoopingEnable(mcastSnoopingFlag);
++        }
++
+         String bridgeUuid = getBridgeUuid(ovsdbBridge.name());
+         if (bridgeUuid == null) {
+             bridge.setName(ovsdbBridge.name());
+diff --git a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Bridge.java b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Bridge.java
+index f31cf38e50..ef24f44c7c 100644
+--- a/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Bridge.java
++++ b/protocols/ovsdb/rfc/src/main/java/org/onosproject/ovsdb/rfc/table/Bridge.java
+@@ -41,7 +41,7 @@ public class Bridge extends AbstractOvsdbTableService {
+         CONTROLLER("controller"), PROTOCOLS("protocols"),
+         FAILMODE("fail_mode"), STATUS("status"), OTHERCONFIG("other_config"),
+         EXTERNALIDS("external_ids"), FLOODVLANS("flood_vlans"),
+-        FLOWTABLES("flow_tables");
++        FLOWTABLES("flow_tables"), MCASTSNOOPINGENABLE("mcast_snooping_enable");
+ 
+         private final String columnName;
+ 
+@@ -557,4 +557,30 @@ public class Bridge extends AbstractOvsdbTableService {
+         super.setDataHandler(columndesc, flowTables);
+     }
+ 
++    /**
++     * Get the Column entity which column name is "mcast_snooping_enable" from the Row
++     * entity of attributes.
++     * @return the Column entity which column name is "mcast_snooping_enable"
++     */
++    public Column getMcastSnoopingEnableColumn() {
++        ColumnDescription columndesc = new ColumnDescription(
++                BridgeColumn.MCASTSNOOPINGENABLE
++                        .columnName(),
++                "getMcastSnoopingEnableColumn",
++                VersionNum.VERSION650);
++        return (Column) super.getColumnHandler(columndesc);
++    }
++
++    /**
++     * Add a column entity which column name is "mcast_snooping_enable" to the Row entity
++     * of attributes.
++     * @param flag the column data which column name is "mcast_snooping_enable"
++     */
++    public void setMcastSnoopingEnable(boolean flag) {
++        ColumnDescription columndesc = new ColumnDescription(
++                BridgeColumn.MCASTSNOOPINGENABLE
++                        .columnName(),
++                "setMcastSnoopingEnable", VersionNum.VERSION650);
++        super.setDataHandler(columndesc, flag);
++    }
+ }
+-- 
+2.24.3 (Apple Git-128)
+
