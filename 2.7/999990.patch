@@ -1,0 +1,26 @@
+From 3b2e0f6fb2cc36f7c8c364be992fb795a34f7620 Mon Sep 17 00:00:00 2001
+From: Jian Li <pyguni@gmail.com>
+Date: Tue, 12 May 2020 03:55:43 +0900
+Subject: [PATCH] Use legacy ONOS GUI instead of GUI2
+
+Change-Id: I8051fad1b578e1ff5f75193b64f47cbc12c5e733
+---
+ tools/package/bin/onos-service | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/package/bin/onos-service b/tools/package/bin/onos-service
+index d2879ef19b..afa88510df 100755
+--- a/tools/package/bin/onos-service
++++ b/tools/package/bin/onos-service
+@@ -21,7 +21,7 @@ set -u  # exit on undefined variable
+ ONOS_HOME=${ONOS_HOME:-$(cd $(dirname $0)/.. >/dev/null 2>&1 && pwd)}
+ KARAF_ARGS=server
+ SYS_APPS=drivers
+-ONOS_APPS=${ONOS_APPS:-gui2}  # Activate GUI2 unless specific apps were named
++ONOS_APPS=${ONOS_APPS:-gui}  # Activate legacy GUI unless specific apps were named
+ 
+ cd $ONOS_HOME
+ 
+-- 
+2.21.1 (Apple Git-122.3)
+
