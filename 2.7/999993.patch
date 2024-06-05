@@ -1,0 +1,39 @@
+From 7df8398395d2d528e07bde997b5bfe9f528690f5 Mon Sep 17 00:00:00 2001
+From: kim-tae-kyung <kim.tae.kyung@sk.com>
+Date: Wed, 5 Jun 2024 06:51:15 +0000
+Subject: [PATCH] Allow ovs version 3
+
+---
+ drivers/default/src/main/resources/onos-drivers.xml | 2 +-
+ drivers/ovsdb/src/main/resources/ovsdb-drivers.xml  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/default/src/main/resources/onos-drivers.xml b/drivers/default/src/main/resources/onos-drivers.xml
+index 48cb7919ca..8450a2280e 100644
+--- a/drivers/default/src/main/resources/onos-drivers.xml
++++ b/drivers/default/src/main/resources/onos-drivers.xml
+@@ -24,7 +24,7 @@
+         <property name="supportPacketRequest">true</property>
+     </driver>
+     <driver name="ovs" extends="default"
+-            manufacturer="Nicira, Inc\." hwVersion="Open vSwitch" swVersion="2\..*">
++            manufacturer="Nicira, Inc\." hwVersion="Open vSwitch" swVersion="[23]\..*">
+         <behaviour api="org.onosproject.openflow.controller.driver.OpenFlowSwitchDriver"
+                    impl="org.onosproject.driver.handshaker.NiciraSwitchHandshaker"/>
+         <behaviour api="org.onosproject.openflow.controller.ExtensionTreatmentInterpreter"
+diff --git a/drivers/ovsdb/src/main/resources/ovsdb-drivers.xml b/drivers/ovsdb/src/main/resources/ovsdb-drivers.xml
+index 970a0f60ab..5330fb1db2 100644
+--- a/drivers/ovsdb/src/main/resources/ovsdb-drivers.xml
++++ b/drivers/ovsdb/src/main/resources/ovsdb-drivers.xml
+@@ -25,7 +25,7 @@
+                    impl="org.onosproject.drivers.ovsdb.OvsdbPortConfig"/>
+     </driver>
+     <driver name="ovs" extends="default"
+-            manufacturer="Nicira, Inc\." hwVersion="Open vSwitch" swVersion="2\..*">
++            manufacturer="Nicira, Inc\." hwVersion="Open vSwitch" swVersion="[23]\..*">
+         <behaviour api="org.onosproject.net.behaviour.ControllerConfig"
+                    impl="org.onosproject.drivers.ovsdb.OvsdbControllerConfig"/>
+         <behaviour api="org.onosproject.net.behaviour.MirroringConfig"
+--
+2.43.0
+
